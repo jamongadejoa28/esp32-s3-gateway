@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/config-snmp.response.schema.json",
+  "title": "GET /config/snmp",
+  "type": "object",
+  "properties": {
+    "enabled": {
+      "type": "boolean"
+    },
+    "v1": {
+      "type": "boolean"
+    },
+    "v2c": {
+      "type": "boolean"
+    },
+    "ro_set": {
+      "type": "boolean"
+    },
+    "rw_set": {
+      "type": "boolean"
+    },
+    "auth_traps": {
+      "type": "boolean"
+    },
+    "v3": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "users": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 32,
+                "pattern": "^[A-Za-z0-9_.-]+$"
+              },
+              "access": {
+                "type": "string",
+                "enum": [
+                  "ro",
+                  "rw"
+                ]
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "auth": {
+                "type": "string",
+                "enum": [
+                  "sha"
+                ]
+              },
+              "priv": {
+                "type": "string",
+                "enum": [
+                  "aes"
+                ]
+              },
+              "keys_set": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "access",
+              "enabled",
+              "auth",
+              "priv",
+              "keys_set"
+            ]
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "users"
+      ]
+    },
+    "traps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "host": {
+            "$ref": "common.schema.json#/$defs/ip4"
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          },
+          "version": {
+            "type": "string",
+            "enum": [
+              "v1",
+              "v2c"
+            ]
+          },
+          "inform": {
+            "type": "boolean"
+          },
+          "community_set": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "host",
+          "port",
+          "version",
+          "inform",
+          "community_set",
+          "enabled"
+        ]
+      },
+      "minItems": 0,
+      "maxItems": 4
+    },
+    "sys": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "contact": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "location": {
+          "$ref": "common.schema.json#/$defs/text"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "contact",
+        "location"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "enabled",
+    "v1",
+    "v2c",
+    "ro_set",
+    "rw_set",
+    "auth_traps",
+    "v3",
+    "traps",
+    "sys"
+  ]
+}

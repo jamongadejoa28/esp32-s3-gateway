@@ -1,0 +1,6 @@
+dependencies:
+  idf: "==6.1.0"
+  espressif/w5500: "~2.0.1"
+  joltwallet/littlefs: "==1.22.3"
+  espressif/cjson: "^1.7.19"
+  espressif/led_strip: "^3.0.0"

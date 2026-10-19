@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/config-network.request.schema.json",
+  "title": "PUT /config/network",
+  "type": "object",
+  "properties": {
+    "eth": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "static",
+            "dhcp"
+          ]
+        },
+        "ip": {
+          "$ref": "common.schema.json#/$defs/ip4"
+        },
+        "mask": {
+          "$ref": "common.schema.json#/$defs/ip4"
+        },
+        "gw": {
+          "$ref": "common.schema.json#/$defs/ip4_opt"
+        },
+        "dns1": {
+          "$ref": "common.schema.json#/$defs/ip4_opt"
+        },
+        "dns2": {
+          "$ref": "common.schema.json#/$defs/ip4_opt"
+        }
+      },
+      "additionalProperties": false
+    },
+    "hostname": {
+      "$ref": "common.schema.json#/$defs/hostname"
+    },
+    "ap": {
+      "type": "object",
+      "properties": {
+        "fallback": {
+          "type": "boolean"
+        },
+        "ssid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "channel": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 13
+        },
+        "idle_min": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120
+        },
+        "fallback_after_s": {
+          "type": "integer",
+          "minimum": 30,
+          "maximum": 3600
+        },
+        "psk": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 63,
+          "pattern": "^[\\x20-\\x7e]{8,63}$",
+          "description": "write-only"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

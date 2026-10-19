@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/error.schema.json",
+  "title": "Error body",
+  "description": "Every 4xx/5xx JSON response. Extra members per error code: see API.md §Errors.",
+  "type": "object",
+  "properties": {
+    "error": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "description": "Extensible (API.md §1 Versioning): clients must handle unknown codes by HTTP status. Known: bad_request, invalid_json, unauthorized, bad_credentials, forbidden, csrf, origin, password_change_required, not_found, conflict, rejected, exists, last_admin, limit, self, payload_too_large, validation, policy, wrong_password, hash_mismatch, image_invalid, locked, rate_limited, internal, unavailable, busy, misdirected",
+      "examples": [
+        "bad_request",
+        "invalid_json",
+        "unauthorized",
+        "bad_credentials",
+        "forbidden",
+        "csrf",
+        "origin",
+        "password_change_required",
+        "not_found",
+        "conflict",
+        "rejected",
+        "exists",
+        "last_admin",
+        "limit",
+        "self",
+        "payload_too_large",
+        "validation",
+        "policy",
+        "wrong_password",
+        "hash_mismatch",
+        "image_invalid",
+        "locked",
+        "rate_limited",
+        "internal",
+        "unavailable",
+        "busy",
+        "misdirected"
+      ]
+    },
+    "message": {
+      "type": "string",
+      "maxLength": 200,
+      "description": "human readable (English), informational only"
+    },
+    "field": {
+      "type": "string",
+      "maxLength": 48,
+      "description": "dotted path of the offending field"
+    },
+    "code": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "description": "validation detail for error=validation; extensible. Known: required, type, range, format, length, duplicate, overlap, unknown_register, unknown_field, too_many, unsupported_schema, lockout",
+      "examples": [
+        "required",
+        "type",
+        "range",
+        "format",
+        "length",
+        "duplicate",
+        "overlap",
+        "unknown_register",
+        "unknown_field",
+        "too_many",
+        "unsupported_schema",
+        "lockout"
+      ]
+    },
+    "retry_after": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3600,
+      "description": "seconds (429)"
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "min_length",
+          "max_length",
+          "classes",
+          "not_username",
+          "not_default",
+          "not_previous",
+          "charset"
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 7
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "rejected"
+      ],
+      "description": "409 rejected: write state (API.md §4.4)"
+    },
+    "reason": {
+      "$ref": "common.schema.json#/$defs/write_reason"
+    },
+    "cmd": {
+      "$ref": "common.schema.json#/$defs/u32"
+    },
+    "addr": {
+      "type": "integer",
+      "minimum": 40001,
+      "maximum": 40059,
+      "description": "register address (409 rejected write bodies, API.md §4.4)"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "error"
+  ]
+}

@@ -1,0 +1,354 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/ws-server.schema.json",
+  "title": "WebSocket server -> client messages",
+  "$defs": {
+    "hello": {
+      "type": "object",
+      "properties": {
+        "t": {
+          "const": "hello"
+        },
+        "v": {
+          "const": 1
+        },
+        "srv": {
+          "$ref": "common.schema.json#/$defs/epoch_ms_opt"
+        },
+        "devs": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/dev"
+          },
+          "minItems": 0,
+          "maxItems": 4
+        },
+        "seq": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[0-3]$"
+          },
+          "additionalProperties": {
+            "$ref": "common.schema.json#/$defs/u32"
+          }
+        },
+        "meta": {
+          "type": "string",
+          "maxLength": 40
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "t",
+        "v",
+        "srv",
+        "devs",
+        "seq",
+        "meta"
+      ]
+    },
+    "snap": {
+      "type": "object",
+      "properties": {
+        "t": {
+          "const": "snap"
+        },
+        "dev": {
+          "$ref": "common.schema.json#/$defs/dev"
+        },
+        "seq": {
+          "$ref": "common.schema.json#/$defs/u32"
+        },
+        "ts": {
+          "$ref": "common.schema.json#/$defs/epoch_ms_opt"
+        },
+        "on": {
+          "type": "boolean"
+        },
+        "full": {
+          "type": "boolean"
+        },
+        "r": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "common.schema.json#/$defs/reg_addr_key"
+          },
+          "additionalProperties": {
+            "$ref": "common.schema.json#/$defs/raw"
+          }
+        },
+        "c": {
+          "$ref": "common.schema.json#/$defs/u32"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "t",
+        "dev",
+        "seq",
+        "ts",
+        "on",
+        "full",
+        "r"
+      ]
+    },
+    "alarm": {
+      "type": "object",
+      "properties": {
+        "t": {
+          "const": "alarm"
+        },
+        "dev": {
+          "$ref": "common.schema.json#/$defs/dev"
+        },
+        "key": {
+          "$ref": "common.schema.json#/$defs/alarm_key"
+        },
+        "id": {
+          "$ref": "common.schema.json#/$defs/alarm_id"
+        },
+        "code": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 999
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "raise",
+            "clear",
+            "ack"
+          ]
+        },
+        "sev": {
+          "$ref": "common.schema.json#/$defs/sev"
+        },
+        "ts": {
+          "$ref": "common.schema.json#/$defs/epoch_ms_opt"
+        },
+        "seq": {
+          "$ref": "common.schema.json#/$defs/u32"
+        },
+        "value": {
+          "type": "integer",
+          "minimum": -32768,
+          "maximum": 65535
+        },
+        "user": {
+          "$ref": "common.schema.json#/$defs/user_name"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "t",
+        "dev",
+        "key",
+        "id",
+        "code",
+        "type",
+        "sev",
+        "ts",
+        "seq",
+        "value"
+      ]
+    },
+    "write": {
+      "type": "object",
+      "properties": {
+        "t": {
+          "const": "write"
+        },
+        "dev": {
+          "$ref": "common.schema.json#/$defs/dev"
+        },
+        "cmd": {
+          "$ref": "common.schema.json#/$defs/u32"
+        },
+        "addr": {
+          "type": "integer",
+          "minimum": 40001,
+          "maximum": 40059
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "applied",
+            "rejected",
+            "uncertain"
+          ]
+        },
+        "raw": {
+          "$ref": "common.schema.json#/$defs/raw"
+        },
+        "reason": {
+          "$ref": "common.schema.json#/$defs/write_reason"
+        },
+        "by": {
+          "type": "string",
+          "maxLength": 11
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "t",
+        "dev",
+        "cmd",
+        "addr",
+        "state",
+        "by"
+      ]
+    },
+    "comm": {
+      "type": "object",
+      "properties": {
+        "t": {
+          "const": "comm"
+        },
+        "dev": {
+          "$ref": "common.schema.json#/$defs/dev"
+        },
+        "online": {
+          "type": "boolean"
+        },
+        "rtt": {
+          "$ref": "common.schema.json#/$defs/u16"
+        },
+        "err": {
+          "type": "object",
+          "properties": {
+            "crc": {
+              "$ref": "common.schema.json#/$defs/u32"
+            },
+            "timeout": {
+              "$ref": "common.schema.json#/$defs/u32"
+            },
+            "exception": {
+              "$ref": "common.schema.json#/$defs/u32"
+            },
+            "malformed": {
+              "$ref": "common.schema.json#/$defs/u32"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "crc",
+            "timeout",
+            "exception",
+            "malformed"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "t",
+        "dev",
+        "online",
+        "rtt",
+        "err"
+      ]
+    },
+    "sys": {
+      "type": "object",
+      "properties": {
+        "t": {
+          "const": "sys"
+        },
+        "heap": {
+          "$ref": "common.schema.json#/$defs/u32"
+        },
+        "heap_min": {
+          "$ref": "common.schema.json#/$defs/u32"
+        },
+        "psram": {
+          "$ref": "common.schema.json#/$defs/u32"
+        },
+        "up": {
+          "$ref": "common.schema.json#/$defs/u32"
+        },
+        "time": {
+          "$ref": "common.schema.json#/$defs/epoch_ms_opt"
+        },
+        "alarms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 200
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "t",
+        "heap",
+        "heap_min",
+        "psram",
+        "up",
+        "time",
+        "alarms"
+      ]
+    },
+    "bye": {
+      "type": "object",
+      "properties": {
+        "t": {
+          "const": "bye"
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "session_expired",
+            "logout",
+            "revoked",
+            "reboot"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "t",
+        "reason"
+      ]
+    },
+    "pong": {
+      "type": "object",
+      "properties": {
+        "t": {
+          "const": "pong"
+        },
+        "srv": {
+          "$ref": "common.schema.json#/$defs/epoch_ms_opt"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "t",
+        "srv"
+      ]
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/hello"
+    },
+    {
+      "$ref": "#/$defs/snap"
+    },
+    {
+      "$ref": "#/$defs/alarm"
+    },
+    {
+      "$ref": "#/$defs/write"
+    },
+    {
+      "$ref": "#/$defs/comm"
+    },
+    {
+      "$ref": "#/$defs/sys"
+    },
+    {
+      "$ref": "#/$defs/bye"
+    },
+    {
+      "$ref": "#/$defs/pong"
+    }
+  ]
+}

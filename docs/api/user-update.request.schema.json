@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/user-update.request.schema.json",
+  "title": "PUT /users/{name}",
+  "type": "object",
+  "properties": {
+    "role": {
+      "$ref": "common.schema.json#/$defs/role"
+    },
+    "password": {
+      "$ref": "common.schema.json#/$defs/password"
+    },
+    "must_change": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false,
+  "minProperties": 1
+}

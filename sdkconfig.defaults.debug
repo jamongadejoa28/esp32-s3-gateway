@@ -1,0 +1,6 @@
+# Debug overlay. Use with:
+#   uv run --locked python tools/idf.py -B build-debug \
+#     -DSDKCONFIG=build-debug/sdkconfig -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.debug" build
+CONFIG_LWIP_CHECK_THREAD_SAFETY=y
+CONFIG_LOG_DEFAULT_LEVEL_DEBUG=y
+CONFIG_HEAP_POISONING_LIGHT=y

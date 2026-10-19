@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/user.response.schema.json",
+  "title": "POST /users 201, PUT /users/{name} 200",
+  "type": "object",
+  "properties": {
+    "name": {
+      "$ref": "common.schema.json#/$defs/user_name"
+    },
+    "role": {
+      "$ref": "common.schema.json#/$defs/role"
+    },
+    "must_change": {
+      "type": "boolean"
+    },
+    "changed": {
+      "$ref": "common.schema.json#/$defs/epoch_ms_opt"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "role",
+    "must_change",
+    "changed"
+  ]
+}

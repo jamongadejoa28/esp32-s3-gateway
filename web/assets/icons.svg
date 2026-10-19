@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <!-- 20 px line icons, 1.5 px stroke, square caps (stroke/fill come from CSS class .i).
+       The build (tools/build_web.mjs) minifies this file, adds the MESTIO symbol as #logo and
+       inlines it into index.html, so icons cost no extra request. -->
+  <symbol id="i-dash" viewBox="0 0 20 20"><path d="M3 3h6v8H3zM11 3h6v5h-6zM11 10h6v7h-6zM3 13h6v4H3z"/></symbol>
+  <symbol id="i-ctrl" viewBox="0 0 20 20"><path d="M3 6h3M10 6h7M3 14h9M16 14h1M6 4h4v4H6zM12 12h4v4h-4z"/></symbol>
+  <symbol id="i-trend" viewBox="0 0 20 20"><path d="M3 3v14h14M6 13l3-4 3 2 5-6"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 20 20"><path d="M10 3a5 5 0 0 1 5 5v4l1.5 2.5h-13L5 12V8a5 5 0 0 1 5-5zM8 17.5h4"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 20 20"><path d="M15.84 9.17l1.73.11v1.44l-1.73.11-1.12 2.71 1.14 1.3-1.02 1.02-1.3-1.14-2.71 1.12-.11 1.73H9.28l-.11-1.73-2.71-1.12-1.3 1.14-1.02-1.02 1.14-1.3-1.12-2.71-1.73-.11V9.28l1.73-.11 1.12-2.71-1.14-1.3 1.02-1.02 1.3 1.14 2.71-1.12.11-1.73h1.44l.11 1.73 2.71 1.12 1.3-1.14 1.02 1.02-1.14 1.3z"/><circle cx="10" cy="10" r="2.5"/></symbol>
+  <symbol id="i-home" viewBox="0 0 20 20"><path d="M3 17V8l7-5 7 5v9zM8 17v-5h4v5"/></symbol>
+  <symbol id="i-net" viewBox="0 0 20 20"><path d="M8 3h4v4H8zM3 13h4v4H3zM13 13h4v4h-4zM10 7v3M5 13v-3h10v3"/></symbol>
+  <symbol id="i-plug" viewBox="0 0 20 20"><path d="M7 3v4M13 3v4M4.5 7h11v3a5.5 5.5 0 0 1-11 0zM10 15.5V18"/></symbol>
+  <symbol id="i-rules" viewBox="0 0 20 20"><path d="M8 5h9M8 10h9M8 15h9M3 5h1.5M3 10h1.5M3 15h1.5"/></symbol>
+  <symbol id="i-snmp" viewBox="0 0 20 20"><circle cx="10" cy="10" r="1.25"/><path d="M6.8 13.2a4.5 4.5 0 0 1 0-6.4M13.2 6.8a4.5 4.5 0 0 1 0 6.4M4.3 15.7a8 8 0 0 1 0-11.4M15.7 4.3a8 8 0 0 1 0 11.4"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l2.5 2"/></symbol>
+  <symbol id="i-user" viewBox="0 0 20 20"><circle cx="10" cy="7" r="3"/><path d="M4 17c0-3.3 2.7-5 6-5s6 1.7 6 5"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 20 20"><path d="M10 2.5l6 2.5v4.5c0 4-2.7 6.7-6 8-3.3-1.3-6-4-6-8V5zM7.5 10l2 2 3.5-4"/></symbol>
+  <symbol id="i-chip" viewBox="0 0 20 20"><path d="M6 6h8v8H6zM8 3v3M12 3v3M8 14v3M12 14v3M3 8h3M3 12h3M14 8h3M14 12h3"/></symbol>
+  <symbol id="i-out" viewBox="0 0 20 20"><path d="M8 3H4v14h4M12.5 6.5L16 10l-3.5 3.5M16 10H8"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 20 20"><circle cx="10" cy="10" r="3.5"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M4.3 15.7l1.4-1.4M14.3 5.7l1.4-1.4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 20 20"><path d="M15.5 12.5a6.5 6.5 0 0 1-8-8 6.5 6.5 0 1 0 8 8z"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 20 20"><path d="M3 6h14M3 10h14M3 14h14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 20 20"><path d="M5 9h10v8H5zM7 9V6.5a3 3 0 0 1 6 0V9"/></symbol>
+  <symbol id="i-check" viewBox="0 0 20 20"><path d="M4 10.5l4 4 8-9"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 20 20"><path d="M10 3l8 14H2zM10 8v4M10 14v1"/></symbol>
+  <symbol id="i-info" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7"/><path d="M10 9v5M10 6v1"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 20 20"><path d="M5 8l5 5 5-5"/></symbol>
+  <symbol id="i-down" viewBox="0 0 20 20"><path d="M10 3v10M6 9l4 4 4-4M4 17h12"/></symbol>
+  <symbol id="i-up" viewBox="0 0 20 20"><path d="M10 13V3M6 7l4-4 4 4M4 17h12"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 20 20"><path d="M16 10a6 6 0 1 1-1.8-4.3M16 3v4h-4"/></symbol>
+  <symbol id="i-power" viewBox="0 0 20 20"><path d="M10 3v7M6 5.5a6 6 0 1 0 8 0"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 20 20"><path d="M4 16l1-4 8-8 3 3-8 8zM11 6l3 3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 20 20"><path d="M10 4v12M4 10h12"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 20 20"><path d="M4 6h12M8 6V4h4v2M6 6l1 11h6l1-11"/></symbol>
+  <symbol id="i-rail" viewBox="0 0 20 20"><path d="M3 3h14v14H3zM8 3v14M11 8l2 2-2 2"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7"/><path d="M3 10h14M10 3c2 2 3 4.5 3 7s-1 5-3 7c-2-2-3-4.5-3-7s1-5 3-7z"/></symbol>
+  <!-- severity markers (filled, 12 px): critical octagon, major triangle, minor diamond, info circle -->
+  <symbol id="sv3" viewBox="0 0 12 12"><path d="M4 0h4l4 4v4l-4 4H4L0 8V4z"/></symbol>
+  <symbol id="sv2" viewBox="0 0 12 12"><path d="M6 .5l6 11H0z"/></symbol>
+  <symbol id="sv1" viewBox="0 0 12 12"><path d="M6 0l6 6-6 6-6-6z"/></symbol>
+  <symbol id="sv0" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5"/></symbol>
+</svg>

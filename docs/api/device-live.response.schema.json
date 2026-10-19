@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/device-live.response.schema.json",
+  "title": "GET /devices/{d}/live",
+  "type": "object",
+  "properties": {
+    "seq": {
+      "$ref": "common.schema.json#/$defs/u32"
+    },
+    "ts": {
+      "$ref": "common.schema.json#/$defs/epoch_ms_opt"
+    },
+    "online": {
+      "type": "boolean"
+    },
+    "fresh": {
+      "type": "boolean"
+    },
+    "slow_valid": {
+      "type": "boolean"
+    },
+    "regs": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "common.schema.json#/$defs/reg_addr_key"
+      },
+      "additionalProperties": {
+        "$ref": "common.schema.json#/$defs/raw"
+      }
+    },
+    "coils": {
+      "$ref": "common.schema.json#/$defs/u32"
+    },
+    "derived": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "temp": {
+              "type": "number",
+              "minimum": -25,
+              "maximum": 85
+            },
+            "hum": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 99
+            },
+            "current": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 99.9
+            },
+            "running": {
+              "type": "boolean"
+            },
+            "stages": {
+              "type": "object",
+              "properties": {
+                "cool": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 3
+                },
+                "heat": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4
+                },
+                "hum": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 2
+                },
+                "dehum": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "cool",
+                "heat",
+                "hum",
+                "dehum"
+              ]
+            },
+            "mode": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "cool",
+                  "heat",
+                  "hum",
+                  "dehum"
+                ]
+              },
+              "minItems": 0,
+              "maxItems": 4
+            },
+            "delay_s": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "temp",
+            "hum",
+            "current",
+            "running",
+            "stages",
+            "mode",
+            "delay_s"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "seq",
+    "ts",
+    "online",
+    "fresh",
+    "slow_valid",
+    "regs",
+    "coils",
+    "derived"
+  ]
+}

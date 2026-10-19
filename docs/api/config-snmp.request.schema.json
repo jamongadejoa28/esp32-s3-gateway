@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/config-snmp.request.schema.json",
+  "title": "PUT /config/snmp",
+  "type": "object",
+  "properties": {
+    "enabled": {
+      "type": "boolean"
+    },
+    "v1": {
+      "type": "boolean"
+    },
+    "v2c": {
+      "type": "boolean"
+    },
+    "auth_traps": {
+      "type": "boolean"
+    },
+    "v3": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "users": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 32,
+                "pattern": "^[A-Za-z0-9_.-]+$"
+              },
+              "access": {
+                "type": "string",
+                "enum": [
+                  "ro",
+                  "rw"
+                ]
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "auth_pass": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "write-only passphrase; 8..64 UTF-8 BYTES without control characters (maxLength counts characters and is only an upper bound; the firmware answers 422 length above 64 bytes)"
+              },
+              "priv_pass": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "write-only passphrase; 8..64 UTF-8 BYTES without control characters (maxLength counts characters and is only an upper bound; the firmware answers 422 length above 64 bytes)"
+              }
+            },
+            "additionalProperties": false
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      },
+      "additionalProperties": false
+    },
+    "traps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "host": {
+            "$ref": "common.schema.json#/$defs/ip4"
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          },
+          "version": {
+            "type": "string",
+            "enum": [
+              "v1",
+              "v2c"
+            ]
+          },
+          "inform": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "community": {
+            "type": "string",
+            "maxLength": 32,
+            "pattern": "^[\\x21-\\x7e]*$",
+            "description": "write-only community"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "host"
+        ]
+      },
+      "minItems": 0,
+      "maxItems": 4
+    },
+    "sys": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "contact": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "location": {
+          "$ref": "common.schema.json#/$defs/text"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ro": {
+      "type": "string",
+      "maxLength": 32,
+      "pattern": "^[\\x21-\\x7e]*$",
+      "description": "write-only community"
+    },
+    "rw": {
+      "type": "string",
+      "maxLength": 32,
+      "pattern": "^[\\x21-\\x7e]*$",
+      "description": "write-only community"
+    }
+  },
+  "additionalProperties": false
+}

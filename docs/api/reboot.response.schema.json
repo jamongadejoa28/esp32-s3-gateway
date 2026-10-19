@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/reboot.response.schema.json",
+  "title": "202 for reboot / rollback / factory reset",
+  "type": "object",
+  "properties": {
+    "reboot_in_s": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 60
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "reboot_in_s"
+  ]
+}

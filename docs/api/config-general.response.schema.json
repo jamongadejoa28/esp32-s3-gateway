@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/config-general.response.schema.json",
+  "title": "GET /config/general",
+  "type": "object",
+  "properties": {
+    "site": {
+      "$ref": "common.schema.json#/$defs/text"
+    },
+    "location": {
+      "$ref": "common.schema.json#/$defs/text"
+    },
+    "contact": {
+      "$ref": "common.schema.json#/$defs/text"
+    },
+    "lang": {
+      "type": "string",
+      "enum": [
+        "ko",
+        "en"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "site",
+    "location",
+    "contact",
+    "lang"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/user-create.request.schema.json",
+  "title": "POST /users",
+  "type": "object",
+  "properties": {
+    "name": {
+      "$ref": "common.schema.json#/$defs/user_name"
+    },
+    "role": {
+      "$ref": "common.schema.json#/$defs/role"
+    },
+    "password": {
+      "$ref": "common.schema.json#/$defs/password"
+    },
+    "must_change": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "role",
+    "password"
+  ]
+}

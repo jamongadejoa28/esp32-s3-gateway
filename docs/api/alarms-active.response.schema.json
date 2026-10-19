@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/alarms-active.response.schema.json",
+  "title": "GET /alarms/active",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "key": {
+        "$ref": "common.schema.json#/$defs/alarm_key"
+      },
+      "dev": {
+        "$ref": "common.schema.json#/$defs/dev"
+      },
+      "id": {
+        "$ref": "common.schema.json#/$defs/alarm_id"
+      },
+      "code": {
+        "type": "integer",
+        "minimum": 100,
+        "maximum": 999
+      },
+      "sev": {
+        "$ref": "common.schema.json#/$defs/sev"
+      },
+      "since": {
+        "$ref": "common.schema.json#/$defs/epoch_ms_opt"
+      },
+      "acked": {
+        "type": "boolean"
+      },
+      "ack_by": {
+        "anyOf": [
+          {
+            "$ref": "common.schema.json#/$defs/user_name"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "ack_ts": {
+        "$ref": "common.schema.json#/$defs/epoch_ms_opt"
+      },
+      "value": {
+        "type": "integer",
+        "minimum": -32768,
+        "maximum": 65535
+      }
+    },
+    "additionalProperties": false,
+    "required": [
+      "key",
+      "dev",
+      "id",
+      "code",
+      "sev",
+      "since",
+      "acked",
+      "ack_by",
+      "ack_ts",
+      "value"
+    ]
+  }
+}

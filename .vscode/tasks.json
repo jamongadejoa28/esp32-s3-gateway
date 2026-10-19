@@ -1,0 +1,102 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "GW: build (IDF 6.1)",
+      "type": "shell",
+      "command": "uv run --locked python tools/idf.py build",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "GW: build without web UI (empty asset table, separate build-noui dir)",
+      "type": "shell",
+      "command": "uv run --locked python tools/idf.py -B build-noui -DGW_WEB_ASSETS=OFF build",
+      "group": "build",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "GW: host tests",
+      "type": "shell",
+      "command": "uv run --locked pytest -q",
+      "group": { "kind": "test", "isDefault": true },
+      "options": { "env": { "PATH": "/home/hajun/.nvm/versions/node/v24.14.0/bin:${env:PATH}" } },
+      "problemMatcher": []
+    },
+    {
+      "label": "GW: API contract tests (schemas, API.md examples, mock server)",
+      "type": "shell",
+      "command": "uv run --locked pytest -q tests/test_api_contract.py",
+      "group": "test",
+      "options": { "env": { "PATH": "/home/hajun/.nvm/versions/node/v24.14.0/bin:${env:PATH}" } },
+      "problemMatcher": []
+    },
+    {
+      "label": "GW: web build",
+      "type": "shell",
+      "command": "npm run build:web",
+      "options": { "env": { "PATH": "/home/hajun/.nvm/versions/node/v24.14.0/bin:${env:PATH}" } },
+      "problemMatcher": []
+    },
+    {
+      "label": "GW: web tests",
+      "type": "shell",
+      "command": "npm test",
+      "group": "test",
+      "options": { "env": { "PATH": "/home/hajun/.nvm/versions/node/v24.14.0/bin:${env:PATH}" } },
+      "problemMatcher": []
+    },
+    {
+      "label": "GW: mock server",
+      "type": "shell",
+      "command": "npm run mock",
+      "isBackground": true,
+      "options": { "env": { "PATH": "/home/hajun/.nvm/versions/node/v24.14.0/bin:${env:PATH}" } },
+      "problemMatcher": []
+    },
+    {
+      "label": "GW: hw_smoke against the mock (start 'GW: mock server' first)",
+      "type": "shell",
+      "command": "uv run --locked python tools/hw_smoke.py --url http://127.0.0.1:8080",
+      "problemMatcher": []
+    },
+    {
+      "label": "GW: hw_smoke against a device (network only)",
+      "type": "process",
+      "command": "uv",
+      "args": ["run", "--locked", "python", "tools/hw_smoke.py", "--url", "${input:deviceUrl}"],
+      "options": { "env": { "GW_PASSWORD": "${input:currentPassword}", "GW_NEW_PASSWORD": "${input:newPassword}" } },
+      "problemMatcher": []
+    },
+    {
+      "label": "GW: snmp_smoke against a device (network only)",
+      "type": "process",
+      "command": "uv",
+      "args": ["run", "--locked", "python", "tools/snmp_smoke.py", "--host", "${input:deviceHost}", "v2c"],
+      "options": { "env": { "GW_SNMP_RO": "${input:snmpCommunity}" } },
+      "problemMatcher": []
+    },
+    {
+      "label": "GW: HARDWARE flash + monitor (manual only - touches the USB device)",
+      "type": "process",
+      "command": "uv",
+      "args": ["run", "--locked", "python", "tools/run_device.py", "--port", "${input:serialPort}", "${input:confirmHardware}"],
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    { "id": "deviceUrl", "type": "promptString", "description": "Gateway URL", "default": "http://192.168.10.150" },
+    { "id": "deviceHost", "type": "promptString", "description": "Gateway IPv4", "default": "192.168.10.150" },
+    { "id": "currentPassword", "type": "promptString", "description": "Current admin password (empty = factory password)", "password": true },
+    { "id": "newPassword", "type": "promptString", "description": "Admin password to set if the device still has the factory password (empty = none)", "password": true },
+    { "id": "snmpCommunity", "type": "promptString", "description": "SNMP v2c RO community", "password": true },
+    { "id": "serialPort", "type": "promptString", "description": "Serial port of the board (e.g. /dev/ttyACM0) - this flashes the attached device" },
+    {
+      "id": "confirmHardware",
+      "type": "pickString",
+      "description": "Flash and monitor the attached device now?",
+      "options": ["--no", "--yes"],
+      "default": "--no"
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/alarms-ack.request.schema.json",
+  "title": "POST /alarms/ack",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "keys": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/alarm_key"
+          },
+          "minItems": 1,
+          "maxItems": 64
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "keys"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "all": {
+          "const": true
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "all"
+      ]
+    }
+  ]
+}

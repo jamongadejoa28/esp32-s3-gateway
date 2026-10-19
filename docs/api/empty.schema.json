@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/empty.schema.json",
+  "title": "Empty object",
+  "description": "GET /session when not logged in (401)",
+  "type": "object",
+  "maxProperties": 0
+}

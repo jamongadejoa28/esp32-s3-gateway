@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/logs.response.schema.json",
+  "title": "GET /system/logs",
+  "type": "object",
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": [
+        "audit",
+        "system"
+      ]
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "seq": {
+            "$ref": "common.schema.json#/$defs/u32"
+          },
+          "ts": {
+            "$ref": "common.schema.json#/$defs/epoch_ms_opt"
+          },
+          "type": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "description": "Extensible: clients must accept unknown types. Known: alarm_raise, alarm_clear, alarm_ack, comm_lost, comm_restored, boot, time_set, net_link, ap, ota, reboot, net_provisional, health, login_ok, login_fail, lockout, logout, password, user_add, user_mod, user_del, config_change, reg_write, ota_upload, rollback, reboot_req, factory_reset, config_import, time_sync, alarm_ack_req, stats_reset, snmp_test, user_target (follows an admin account change and names the affected account in user; code = action type, extra = action seq)",
+            "examples": [
+              "alarm_raise",
+              "alarm_clear",
+              "alarm_ack",
+              "comm_lost",
+              "comm_restored",
+              "boot",
+              "time_set",
+              "net_link",
+              "ap",
+              "ota",
+              "reboot",
+              "net_provisional",
+              "health",
+              "login_ok",
+              "login_fail",
+              "lockout",
+              "logout",
+              "password",
+              "user_add",
+              "user_mod",
+              "user_del",
+              "config_change",
+              "reg_write",
+              "ota_upload",
+              "rollback",
+              "reboot_req",
+              "factory_reset",
+              "config_import",
+              "time_sync",
+              "alarm_ack_req",
+              "stats_reset",
+              "snmp_test",
+              "user_target"
+            ]
+          },
+          "dev": {
+            "anyOf": [
+              {
+                "$ref": "common.schema.json#/$defs/dev"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "code": {
+            "$ref": "common.schema.json#/$defs/u16"
+          },
+          "sev": {
+            "$ref": "common.schema.json#/$defs/sev"
+          },
+          "value": {
+            "type": "integer",
+            "minimum": -32768,
+            "maximum": 32767
+          },
+          "user": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 12
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "extra": {
+            "$ref": "common.schema.json#/$defs/u32"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "seq",
+          "ts",
+          "type",
+          "dev",
+          "code",
+          "sev",
+          "value",
+          "user",
+          "extra"
+        ]
+      },
+      "minItems": 0,
+      "maxItems": 200
+    },
+    "next": {
+      "anyOf": [
+        {
+          "$ref": "common.schema.json#/$defs/u32"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "items",
+    "next"
+  ]
+}

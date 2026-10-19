@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/write-result.response.schema.json",
+  "title": "Register write outcome (200/202/409)",
+  "type": "object",
+  "properties": {
+    "error": {
+      "type": "string",
+      "enum": [
+        "rejected"
+      ],
+      "description": "present only with 409"
+    },
+    "state": {
+      "$ref": "common.schema.json#/$defs/wstate"
+    },
+    "cmd": {
+      "$ref": "common.schema.json#/$defs/u32"
+    },
+    "addr": {
+      "type": "integer",
+      "minimum": 40001,
+      "maximum": 40059
+    },
+    "raw": {
+      "$ref": "common.schema.json#/$defs/raw"
+    },
+    "reason": {
+      "$ref": "common.schema.json#/$defs/write_reason"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "state",
+    "cmd"
+  ]
+}

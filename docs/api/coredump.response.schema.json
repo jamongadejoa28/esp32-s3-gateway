@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/coredump.response.schema.json",
+  "title": "GET /system/coredump",
+  "description": "Summary of the stored core dump (no RAM contents). The full ELF is only available over USB.",
+  "type": "object",
+  "properties": {
+    "task": {
+      "type": "string",
+      "maxLength": 15
+    },
+    "pc": {
+      "$ref": "common.schema.json#/$defs/u32"
+    },
+    "cause": {
+      "$ref": "common.schema.json#/$defs/u32"
+    },
+    "vaddr": {
+      "$ref": "common.schema.json#/$defs/u32"
+    },
+    "backtrace": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/u32"
+      },
+      "minItems": 0,
+      "maxItems": 16
+    },
+    "backtrace_corrupted": {
+      "type": "boolean"
+    },
+    "app_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{0,16}$",
+      "description": "ELF SHA-256 prefix of the crashed image"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "task",
+    "pc",
+    "cause",
+    "vaddr",
+    "backtrace",
+    "backtrace_corrupted",
+    "app_sha256"
+  ]
+}

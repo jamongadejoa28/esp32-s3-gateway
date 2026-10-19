@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/factory-reset.request.schema.json",
+  "title": "POST /system/factory-reset",
+  "type": "object",
+  "properties": {
+    "password": {
+      "$ref": "common.schema.json#/$defs/password"
+    },
+    "confirm": {
+      "const": "RESET"
+    },
+    "keep_network": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "password",
+    "confirm"
+  ]
+}

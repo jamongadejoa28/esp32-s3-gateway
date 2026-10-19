@@ -1,0 +1,15 @@
+.venv/
+.tools/
+.pytest_cache/
+__pycache__/
+*.pyc
+build/
+build-*/
+sdkconfig
+sdkconfig.old
+managed_components/
+node_modules/
+web/dist/
+*.so
+web/.dist.lock
+.ruff_cache/

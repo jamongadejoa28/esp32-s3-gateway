@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/alarms-history.response.schema.json",
+  "title": "GET /alarms/history",
+  "type": "object",
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "seq": {
+            "$ref": "common.schema.json#/$defs/u32"
+          },
+          "ts": {
+            "$ref": "common.schema.json#/$defs/epoch_ms_opt"
+          },
+          "dev": {
+            "$ref": "common.schema.json#/$defs/dev"
+          },
+          "id": {
+            "$ref": "common.schema.json#/$defs/alarm_id"
+          },
+          "code": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 999
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "raise",
+              "clear",
+              "ack"
+            ]
+          },
+          "sev": {
+            "$ref": "common.schema.json#/$defs/sev"
+          },
+          "value": {
+            "type": "integer",
+            "minimum": -32768,
+            "maximum": 65535
+          },
+          "user": {
+            "anyOf": [
+              {
+                "$ref": "common.schema.json#/$defs/user_name"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "seq",
+          "ts",
+          "dev",
+          "id",
+          "code",
+          "type",
+          "sev",
+          "value",
+          "user"
+        ]
+      },
+      "minItems": 0,
+      "maxItems": 200
+    },
+    "next": {
+      "anyOf": [
+        {
+          "$ref": "common.schema.json#/$defs/u32"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "items",
+    "next"
+  ]
+}

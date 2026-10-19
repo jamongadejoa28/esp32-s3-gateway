@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/users.response.schema.json",
+  "title": "GET /users",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "$ref": "common.schema.json#/$defs/user_name"
+      },
+      "role": {
+        "$ref": "common.schema.json#/$defs/role"
+      },
+      "must_change": {
+        "type": "boolean"
+      },
+      "changed": {
+        "$ref": "common.schema.json#/$defs/epoch_ms_opt"
+      }
+    },
+    "additionalProperties": false,
+    "required": [
+      "name",
+      "role",
+      "must_change",
+      "changed"
+    ]
+  },
+  "minItems": 1,
+  "maxItems": 4
+}

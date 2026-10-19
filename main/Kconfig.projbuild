@@ -1,0 +1,19 @@
+menu "MESTIO Gateway"
+
+    # Only build-time identity lives in Kconfig. Factory defaults (network, AP, pins, PBKDF2
+    # iterations, device limit) are single-sourced in the C headers that the pure, host-tested
+    # code uses (store/config.h cfg_defaults, board_pins.h, auth.h, gw_defs.h); see DECISIONS.md
+    # (FIXER: Kconfig duplicates removed).
+
+    config GW_SNMP_ENTERPRISE_PEN
+        int "SNMP enterprise PEN"
+        range 1 2147483647
+        default 32473
+        help
+            IANA Private Enterprise Number used for the gateway MIB subtree
+            (1.3.6.1.4.1.<PEN>), sysObjectID, notifications and the SNMPv3 engine ID
+            (0x80000000|PEN, format 3, MAC).
+            PLACEHOLDER: 32473 is the RFC 5612 documentation PEN. Replace it with the
+            vendor's assigned PEN before production.
+
+endmenu

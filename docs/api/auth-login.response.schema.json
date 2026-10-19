@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/auth-login.response.schema.json",
+  "title": "POST /auth/login 200",
+  "type": "object",
+  "properties": {
+    "user": {
+      "$ref": "common.schema.json#/$defs/user_name"
+    },
+    "role": {
+      "$ref": "common.schema.json#/$defs/role"
+    },
+    "csrf": {
+      "$ref": "common.schema.json#/$defs/token"
+    },
+    "must_change": {
+      "type": "boolean"
+    },
+    "idle_s": {
+      "type": "integer",
+      "minimum": 300,
+      "maximum": 7200
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "user",
+    "role",
+    "csrf",
+    "must_change",
+    "idle_s"
+  ]
+}

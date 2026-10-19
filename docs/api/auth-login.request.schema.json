@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/auth-login.request.schema.json",
+  "title": "POST /auth/login",
+  "type": "object",
+  "properties": {
+    "user": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
+    },
+    "pass": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "user",
+    "pass"
+  ]
+}

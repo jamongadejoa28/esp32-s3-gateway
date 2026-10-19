@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/firmware.response.schema.json",
+  "title": "GET /system/firmware",
+  "type": "object",
+  "properties": {
+    "running": {
+      "type": "object",
+      "properties": {
+        "slot": {
+          "type": "string",
+          "enum": [
+            "ota_0",
+            "ota_1"
+          ]
+        },
+        "version": {
+          "$ref": "common.schema.json#/$defs/version"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "valid",
+            "pending_verify",
+            "new",
+            "invalid",
+            "aborted",
+            "undefined"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "slot",
+        "version",
+        "state"
+      ]
+    },
+    "other": {
+      "type": "object",
+      "properties": {
+        "slot": {
+          "type": "string",
+          "enum": [
+            "ota_0",
+            "ota_1"
+          ]
+        },
+        "version": {
+          "anyOf": [
+            {
+              "$ref": "common.schema.json#/$defs/version"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "valid": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "slot",
+        "version",
+        "valid"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "running",
+    "other"
+  ]
+}

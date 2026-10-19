@@ -1,0 +1,45 @@
+/*
+ * alarm_catalog.def - every alarm the gateway can raise. SINGLE SOURCE for the alarm engine,
+ * REST /api/v1/meta/alarms, SNMP (gwAlarmCode values) and tools/gen_mib.py.
+ * Codes are STABLE forever (they appear in logs, traps and SNMP tables): never renumber or reuse.
+ *   1xx  MEX150 alarm coils: code = 100 + coil number (coil 32 "통합경보" is status only)
+ *   2xx  MEX150 register-bit alarms
+ *   3xx  gateway-generated
+ *   4xx  user threshold rules (code = 400 + rule id)
+ *
+ * Include through "alarm/alarm_x.h" only (it defines the tokens and #undefs them afterwards).
+ * One row per line (parsed by Python tools).
+ *
+ * ALM(id, code, kind, addr, bit, sev, vreg, ko, en)
+ *   kind  SRC_COIL (addr = coil number) | SRC_BIT (addr = 4xxxx register, bit) |
+ *         SRC_COMM (gateway comm loss)  | SRC_RULE (addr = rule id 1..8)
+ *   sev   default severity INFO | MINOR | MAJOR | CRITICAL (overridable in config "sev_override";
+ *         rule severity comes from the rule)
+ *   vreg  register whose raw value is reported as the alarm "value" (0 = report 1)
+ */
+
+ALM(blower_fault,     117, SRC_COIL, 17, 0, MAJOR,    0,     "송풍기경보",     "Blower fault")
+ALM(cool1_fault,      118, SRC_COIL, 18, 0, MAJOR,    0,     "냉방1경보",      "Cooling 1 fault")
+ALM(cool2_fault,      119, SRC_COIL, 19, 0, MAJOR,    0,     "냉방2경보",      "Cooling 2 fault")
+ALM(heater_fault,     120, SRC_COIL, 20, 0, MAJOR,    0,     "난방기경보",     "Heater fault")
+ALM(humidifier_fault, 121, SRC_COIL, 21, 0, MAJOR,    0,     "가습기경보",     "Humidifier fault")
+ALM(sensor_fault,     122, SRC_COIL, 22, 0, MAJOR,    0,     "센서경보",       "Sensor fault")
+ALM(leak,             123, SRC_COIL, 23, 0, CRITICAL, 0,     "누수경보",       "Water leak")
+ALM(supply_fault,     124, SRC_COIL, 24, 0, MINOR,    0,     "급수경보",       "Water supply fault")
+ALM(drain_fault,      125, SRC_COIL, 25, 0, MINOR,    0,     "배수경보",       "Drain fault")
+ALM(low_temp,         126, SRC_COIL, 26, 0, MAJOR,    40036, "저온경보",       "Low temperature")
+ALM(high_temp,        127, SRC_COIL, 27, 0, MAJOR,    40036, "고온경보",       "High temperature")
+ALM(low_hum,          128, SRC_COIL, 28, 0, MINOR,    40037, "저습경보",       "Low humidity")
+ALM(high_hum,         129, SRC_COIL, 29, 0, MINOR,    40037, "고습경보",       "High humidity")
+ALM(fire,             130, SRC_COIL, 30, 0, CRITICAL, 0,     "화재경보",       "Fire")
+ALM(cool3_fault,      131, SRC_COIL, 31, 0, MAJOR,    0,     "냉방3경보",      "Cooling 3 fault")
+ALM(contamination,    201, SRC_BIT,  40003, 7, MINOR,    0,     "실린더오염경보", "Cylinder contamination")
+ALM(comm_lost,        301, SRC_COMM, 0,  0, MAJOR,    0,     "통신두절",       "Communication lost")
+ALM(rule_1,           401, SRC_RULE, 1,  0, MAJOR,    0,     "사용자규칙 1",   "User rule 1")
+ALM(rule_2,           402, SRC_RULE, 2,  0, MAJOR,    0,     "사용자규칙 2",   "User rule 2")
+ALM(rule_3,           403, SRC_RULE, 3,  0, MAJOR,    0,     "사용자규칙 3",   "User rule 3")
+ALM(rule_4,           404, SRC_RULE, 4,  0, MAJOR,    0,     "사용자규칙 4",   "User rule 4")
+ALM(rule_5,           405, SRC_RULE, 5,  0, MAJOR,    0,     "사용자규칙 5",   "User rule 5")
+ALM(rule_6,           406, SRC_RULE, 6,  0, MAJOR,    0,     "사용자규칙 6",   "User rule 6")
+ALM(rule_7,           407, SRC_RULE, 7,  0, MAJOR,    0,     "사용자규칙 7",   "User rule 7")
+ALM(rule_8,           408, SRC_RULE, 8,  0, MAJOR,    0,     "사용자규칙 8",   "User rule 8")

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/firmware-upload.response.schema.json",
+  "title": "POST /system/firmware 200",
+  "type": "object",
+  "properties": {
+    "version": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "reboot_in_s": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 60
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "reboot_in_s"
+  ]
+}

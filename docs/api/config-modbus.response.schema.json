@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/config-modbus.response.schema.json",
+  "title": "GET /config/modbus",
+  "type": "object",
+  "properties": {
+    "devices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "common.schema.json#/$defs/dev"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 23,
+            "description": "UTF-8, at most 23 bytes (firmware checks bytes; maxLength is only an upper bound)"
+          },
+          "slave": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 247
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "slave",
+          "enabled"
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 4
+    },
+    "port": {
+      "type": "object",
+      "properties": {
+        "baud": {
+          "enum": [
+            1200,
+            2400,
+            4800,
+            9600,
+            19200,
+            38400,
+            57600,
+            115200
+          ]
+        },
+        "parity": {
+          "type": "string",
+          "enum": [
+            "N",
+            "E",
+            "O"
+          ]
+        },
+        "stop": {
+          "enum": [
+            1,
+            2
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "baud",
+        "parity",
+        "stop"
+      ]
+    },
+    "poll_ms": {
+      "type": "integer",
+      "minimum": 200,
+      "maximum": 60000
+    },
+    "timeout_ms": {
+      "type": "integer",
+      "minimum": 50,
+      "maximum": 2000
+    },
+    "retries": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3
+    },
+    "gap_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "offline_after": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "devices",
+    "port",
+    "poll_ms",
+    "timeout_ms",
+    "retries",
+    "gap_ms",
+    "offline_after"
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/device-stats.response.schema.json",
+  "title": "GET /devices/{d}/stats",
+  "type": "object",
+  "properties": {
+    "tx": {
+      "$ref": "common.schema.json#/$defs/u32"
+    },
+    "rx_ok": {
+      "$ref": "common.schema.json#/$defs/u32"
+    },
+    "crc": {
+      "$ref": "common.schema.json#/$defs/u32"
+    },
+    "timeout": {
+      "$ref": "common.schema.json#/$defs/u32"
+    },
+    "exception": {
+      "$ref": "common.schema.json#/$defs/u32"
+    },
+    "malformed": {
+      "$ref": "common.schema.json#/$defs/u32"
+    },
+    "rtt_ms": {
+      "type": "object",
+      "properties": {
+        "last": {
+          "$ref": "common.schema.json#/$defs/u16"
+        },
+        "avg": {
+          "$ref": "common.schema.json#/$defs/u16"
+        },
+        "max": {
+          "$ref": "common.schema.json#/$defs/u16"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "last",
+        "avg",
+        "max"
+      ]
+    },
+    "online_since": {
+      "$ref": "common.schema.json#/$defs/epoch_ms_opt"
+    },
+    "offline_count": {
+      "$ref": "common.schema.json#/$defs/u32"
+    },
+    "cycles": {
+      "$ref": "common.schema.json#/$defs/u32"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "tx",
+    "rx_ok",
+    "crc",
+    "timeout",
+    "exception",
+    "malformed",
+    "rtt_ms",
+    "online_since",
+    "offline_count",
+    "cycles"
+  ]
+}

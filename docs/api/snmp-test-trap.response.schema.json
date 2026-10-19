@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/snmp-test-trap.response.schema.json",
+  "title": "POST /snmp/test-trap",
+  "type": "object",
+  "properties": {
+    "sent": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "host": {
+            "$ref": "common.schema.json#/$defs/ip4"
+          },
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "host",
+          "ok"
+        ]
+      },
+      "minItems": 0,
+      "maxItems": 4
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "sent"
+  ]
+}

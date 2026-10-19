@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/system-info.response.schema.json",
+  "title": "GET /system/info",
+  "type": "object",
+  "properties": {
+    "fw": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "build": {
+      "type": "string",
+      "maxLength": 23
+    },
+    "idf": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "mac": {
+      "type": "string",
+      "pattern": "^([0-9a-f]{2}:){5}[0-9a-f]{2}$"
+    },
+    "hostname": {
+      "$ref": "common.schema.json#/$defs/hostname"
+    },
+    "uptime_s": {
+      "$ref": "common.schema.json#/$defs/u32"
+    },
+    "time_valid": {
+      "type": "boolean"
+    },
+    "time_ms": {
+      "$ref": "common.schema.json#/$defs/epoch_ms_opt"
+    },
+    "heap": {
+      "type": "object",
+      "properties": {
+        "int_free": {
+          "$ref": "common.schema.json#/$defs/u32"
+        },
+        "int_min": {
+          "$ref": "common.schema.json#/$defs/u32"
+        },
+        "psram_free": {
+          "$ref": "common.schema.json#/$defs/u32"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "int_free",
+        "int_min",
+        "psram_free"
+      ]
+    },
+    "part": {
+      "type": "object",
+      "properties": {
+        "running": {
+          "type": "string",
+          "enum": [
+            "ota_0",
+            "ota_1"
+          ]
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "valid",
+            "pending_verify",
+            "new",
+            "invalid",
+            "aborted",
+            "undefined"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "running",
+        "state"
+      ]
+    },
+    "diag": {
+      "type": "object",
+      "properties": {
+        "reset_reason": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "boot_count": {
+          "$ref": "common.schema.json#/$defs/u32"
+        },
+        "evt_dropped": {
+          "$ref": "common.schema.json#/$defs/u32"
+        },
+        "hb_stale": {
+          "$ref": "common.schema.json#/$defs/u32"
+        },
+        "init_faults": {
+          "$ref": "common.schema.json#/$defs/u32",
+          "description": "Init failures latched at boot (bits: 1 fs mount, 2 store, 4 modbus, 8 net, 16 web, 32 snmp, 64 syslog, 128 core). 0 = clean boot. Optional (older firmware omits it)."
+        },
+        "ws_clients": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "fs": {
+          "type": "object",
+          "properties": {
+            "total": {
+              "$ref": "common.schema.json#/$defs/u32"
+            },
+            "used": {
+              "$ref": "common.schema.json#/$defs/u32"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "total",
+            "used"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "reset_reason",
+        "boot_count",
+        "evt_dropped",
+        "hb_stale",
+        "ws_clients",
+        "fs"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "fw",
+    "build",
+    "idf",
+    "mac",
+    "hostname",
+    "uptime_s",
+    "time_valid",
+    "time_ms",
+    "heap",
+    "part",
+    "diag"
+  ]
+}

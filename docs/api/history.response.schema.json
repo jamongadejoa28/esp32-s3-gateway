@@ -1,0 +1,366 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/history.response.schema.json",
+  "title": "GET /devices/{d}/history",
+  "description": "Values are raw x10 integers; null = gap. min/max only when dt >= 60. stages only with ?stages=1. t0 is null when the gateway's wall clock is not valid; t0_age_ms (monotonic) always anchors the series to the response time.",
+  "type": "object",
+  "properties": {
+    "t0": {
+      "$ref": "common.schema.json#/$defs/epoch_ms_opt"
+    },
+    "t0_age_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2678400000,
+      "description": "milliseconds between the start of bucket 0 and the response, by the monotonic clock"
+    },
+    "dt": {
+      "enum": [
+        1,
+        5,
+        10,
+        30,
+        60,
+        300,
+        600,
+        1800,
+        3600,
+        7200
+      ]
+    },
+    "n": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1500
+    },
+    "ch": {
+      "type": "object",
+      "properties": {
+        "temp": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -32768,
+                "maximum": 32767
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 1500
+        },
+        "hum": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -32768,
+                "maximum": 32767
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 1500
+        },
+        "cur": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -32768,
+                "maximum": 32767
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 1500
+        },
+        "st": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -32768,
+                "maximum": 32767
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 1500
+        },
+        "sh": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -32768,
+                "maximum": 32767
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 1500
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "temp",
+        "hum",
+        "cur",
+        "st",
+        "sh"
+      ]
+    },
+    "min": {
+      "type": "object",
+      "properties": {
+        "temp": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -32768,
+                "maximum": 32767
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 1500
+        },
+        "hum": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -32768,
+                "maximum": 32767
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 1500
+        },
+        "cur": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -32768,
+                "maximum": 32767
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 1500
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "temp",
+        "hum",
+        "cur"
+      ]
+    },
+    "max": {
+      "type": "object",
+      "properties": {
+        "temp": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -32768,
+                "maximum": 32767
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 1500
+        },
+        "hum": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -32768,
+                "maximum": 32767
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 1500
+        },
+        "cur": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -32768,
+                "maximum": 32767
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 1500
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "temp",
+        "hum",
+        "cur"
+      ]
+    },
+    "stages": {
+      "type": "object",
+      "description": "seconds per bucket with >= 1 stage of that kind on (0..dt); null = gap",
+      "properties": {
+        "blower": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 7200
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 1500
+        },
+        "cool": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 7200
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 1500
+        },
+        "heat": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 7200
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 1500
+        },
+        "hum": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 7200
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 1500
+        },
+        "dehum": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 7200
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 1500
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "blower",
+        "cool",
+        "heat",
+        "hum",
+        "dehum"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "t0",
+    "t0_age_ms",
+    "dt",
+    "n",
+    "ch"
+  ]
+}

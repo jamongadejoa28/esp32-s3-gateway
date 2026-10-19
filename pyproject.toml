@@ -1,0 +1,47 @@
+[project]
+name = "mestio-gw"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[dependency-groups]
+# ESP-IDF v6.1 core Python requirements (tools/requirements/requirements.core.txt) + project dev tools.
+dev = [
+    "clang-format==21.1.8",
+    "click<8.5",
+    "cmake>=4.4.4",
+    "construct>=2.10.70",
+    "cryptography<49",
+    "esp-coredump>=1.17.2",
+    "esp-idf-diag>=0.2.0",
+    "esp-idf-kconfig>=3.13.0",
+    "esp-idf-monitor>=1.10.0",
+    "esp-idf-nvs-partition-gen~=0.1.9",
+    "esp-idf-panic-decoder>=1.5.0",
+    "esp-idf-sbom>=1.4.0",
+    "esp-idf-size>=2.3.2",
+    "esptool>=5.5.0",
+    "freertos-gdb>=1.0.4",
+    "idf-component-manager>=2.2",
+    "idf-drivers-gdb>=0.1.1",
+    "jsonschema>=4.23",
+    "ninja>=1.13.2",
+    "packaging>=26.3",
+    "psutil>=7.0.0",
+    "pyclang>=0.7.0",
+    "pyelftools>=0.33",
+    "pyparsing>=3.3.3",
+    "pyserial>=3.5",
+    "pysmi>=1.6.0",
+    "pysnmp>=7.1.0",
+    "pytest>=9.1.1",
+    "rich>=15.0.0",
+    "rich-click>=1.9.9",
+    "setuptools>=84.0.0",
+    "tree-sitter>=0.26.0",
+    "tree-sitter-c>=0.24.2",
+    "websockets>=15.0",
+]

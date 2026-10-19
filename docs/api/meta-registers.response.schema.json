@@ -1,0 +1,261 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/meta-registers.response.schema.json",
+  "title": "GET /meta/registers",
+  "description": "Generated from regmap.def; min/max/disabled are scaled values (raw / scale).",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "MEX_REGMAP_VERSION"
+    },
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "status",
+          "control",
+          "setpoint",
+          "deviation",
+          "delay",
+          "calibration",
+          "limits",
+          "options",
+          "info",
+          "alarm"
+        ]
+      }
+    },
+    "regs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "addr": {
+            "type": "integer",
+            "minimum": 40001,
+            "maximum": 40059
+          },
+          "scale": {
+            "enum": [
+              1,
+              10
+            ]
+          },
+          "signed": {
+            "type": "boolean"
+          },
+          "access": {
+            "type": "string",
+            "enum": [
+              "ro",
+              "rw"
+            ]
+          },
+          "min": {
+            "type": "number"
+          },
+          "max": {
+            "type": "number"
+          },
+          "disabled": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stopped_only": {
+            "type": "boolean"
+          },
+          "snmp_rw": {
+            "type": "boolean"
+          },
+          "runbit": {
+            "type": "boolean"
+          },
+          "bits": {
+            "type": "boolean"
+          },
+          "group": {
+            "type": "string",
+            "enum": [
+              "status",
+              "control",
+              "setpoint",
+              "deviation",
+              "delay",
+              "calibration",
+              "limits",
+              "options",
+              "info",
+              "alarm"
+            ]
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 8
+          },
+          "ko": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "en": {
+            "type": "string",
+            "maxLength": 48
+          },
+          "enum": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "integer"
+                },
+                "ko": {
+                  "type": "string",
+                  "maxLength": 16
+                },
+                "en": {
+                  "type": "string",
+                  "maxLength": 24
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "value",
+                "ko",
+                "en"
+              ]
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "key",
+          "addr",
+          "scale",
+          "signed",
+          "access",
+          "min",
+          "max",
+          "disabled",
+          "stopped_only",
+          "snmp_rw",
+          "runbit",
+          "bits",
+          "group",
+          "unit",
+          "ko",
+          "en"
+        ]
+      }
+    },
+    "bits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "addr": {
+            "type": "integer",
+            "minimum": 40001,
+            "maximum": 40059
+          },
+          "lsb": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 15
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 16
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 8
+          },
+          "ko": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "en": {
+            "type": "string",
+            "maxLength": 48
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "key",
+          "addr",
+          "lsb",
+          "width",
+          "unit",
+          "ko",
+          "en"
+        ]
+      }
+    },
+    "coils": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "n": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 32
+          },
+          "group": {
+            "type": "string",
+            "enum": [
+              "status",
+              "alarm"
+            ]
+          },
+          "ko": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "en": {
+            "type": "string",
+            "maxLength": 48
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "key",
+          "n",
+          "group",
+          "ko",
+          "en"
+        ]
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "groups",
+    "regs",
+    "bits",
+    "coils"
+  ]
+}

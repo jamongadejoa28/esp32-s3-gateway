@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/config-notify.request.schema.json",
+  "title": "PUT /config/notify",
+  "type": "object",
+  "properties": {
+    "syslog": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "host": {
+          "anyOf": [
+            {
+              "$ref": "common.schema.json#/$defs/host"
+            },
+            {
+              "type": "string",
+              "maxLength": 0
+            }
+          ]
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "facility": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 23
+        },
+        "min_sev": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 7
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

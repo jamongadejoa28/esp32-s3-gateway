@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/network-apply.response.schema.json",
+  "title": "PUT /config/network 202",
+  "type": "object",
+  "properties": {
+    "apply_in_s": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 60
+    },
+    "confirm_within_s": {
+      "type": "integer",
+      "minimum": 30,
+      "maximum": 600
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "apply_in_s",
+    "confirm_within_s"
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/command.response.schema.json",
+  "title": "GET /devices/{d}/commands/{id}",
+  "type": "object",
+  "properties": {
+    "cmd": {
+      "$ref": "common.schema.json#/$defs/u32"
+    },
+    "dev": {
+      "$ref": "common.schema.json#/$defs/dev"
+    },
+    "addr": {
+      "type": "integer",
+      "minimum": 40001,
+      "maximum": 40059
+    },
+    "state": {
+      "$ref": "common.schema.json#/$defs/wstate"
+    },
+    "raw": {
+      "$ref": "common.schema.json#/$defs/raw"
+    },
+    "requested": {
+      "$ref": "common.schema.json#/$defs/raw"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "$ref": "common.schema.json#/$defs/write_reason"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "ts": {
+      "$ref": "common.schema.json#/$defs/epoch_ms_opt"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "cmd",
+    "dev",
+    "addr",
+    "state",
+    "raw",
+    "requested",
+    "reason",
+    "ts"
+  ]
+}

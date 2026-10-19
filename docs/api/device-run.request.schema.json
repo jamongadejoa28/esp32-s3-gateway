@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/device-run.request.schema.json",
+  "title": "POST /devices/{d}/run",
+  "type": "object",
+  "properties": {
+    "run": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "run"
+  ]
+}

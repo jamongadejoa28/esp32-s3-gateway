@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/ws-client.schema.json",
+  "title": "WebSocket client -> server messages",
+  "$defs": {
+    "sub": {
+      "type": "object",
+      "properties": {
+        "t": {
+          "const": "sub"
+        },
+        "topics": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "snap",
+              "alarm",
+              "comm",
+              "write",
+              "sys"
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 5
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "t",
+        "topics"
+      ]
+    },
+    "ping": {
+      "type": "object",
+      "properties": {
+        "t": {
+          "const": "ping"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "t"
+      ]
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/sub"
+    },
+    {
+      "$ref": "#/$defs/ping"
+    }
+  ]
+}

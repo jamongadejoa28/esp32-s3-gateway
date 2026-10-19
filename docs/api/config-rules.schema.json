@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/config-rules.schema.json",
+  "title": "GET/PUT /config/rules",
+  "description": "PUT replaces the whole rule list; the response echoes the stored list.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 8
+      },
+      "name": {
+        "type": "string",
+        "maxLength": 23,
+        "description": "UTF-8, at most 23 bytes (firmware checks bytes; maxLength is only an upper bound)"
+      },
+      "enabled": {
+        "type": "boolean"
+      },
+      "dev": {
+        "$ref": "common.schema.json#/$defs/dev"
+      },
+      "src": {
+        "type": "string",
+        "description": "temp = 40036, hum = 40037, cur = 40011, or reg:<addr>. Responses use the canonical form: reg:40036/40037/40011 are returned as temp/hum/cur.",
+        "pattern": "^(temp|hum|cur|reg:400[0-5][0-9])$"
+      },
+      "op": {
+        "type": "string",
+        "enum": [
+          ">",
+          "<"
+        ]
+      },
+      "thr": {
+        "type": "number",
+        "description": "scaled value of the source register"
+      },
+      "hyst": {
+        "type": "number",
+        "minimum": 0
+      },
+      "delay_s": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 3600
+      },
+      "sev": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 3
+      }
+    },
+    "additionalProperties": false,
+    "required": [
+      "id",
+      "name",
+      "enabled",
+      "dev",
+      "src",
+      "op",
+      "thr",
+      "hyst",
+      "delay_s",
+      "sev"
+    ]
+  },
+  "minItems": 0,
+  "maxItems": 8
+}

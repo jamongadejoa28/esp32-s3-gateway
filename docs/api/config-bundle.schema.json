@@ -1,0 +1,587 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/config-bundle.schema.json",
+  "title": "GET /system/config/export, POST /system/config/import",
+  "description": "File/export shape of gateway.json. Never contains secrets. Import: missing sections/fields keep defaults, unknown members are ignored (forward compatibility), schema migrated.",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1
+    },
+    "rev": {
+      "$ref": "common.schema.json#/$defs/u32"
+    },
+    "fw": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "general": {
+      "type": "object",
+      "properties": {
+        "site": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "location": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "contact": {
+          "$ref": "common.schema.json#/$defs/text"
+        },
+        "lang": {
+          "type": "string",
+          "enum": [
+            "ko",
+            "en"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "site",
+        "location",
+        "contact",
+        "lang"
+      ]
+    },
+    "network": {
+      "type": "object",
+      "properties": {
+        "eth": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": [
+                "static",
+                "dhcp"
+              ]
+            },
+            "ip": {
+              "$ref": "common.schema.json#/$defs/ip4"
+            },
+            "mask": {
+              "$ref": "common.schema.json#/$defs/ip4"
+            },
+            "gw": {
+              "$ref": "common.schema.json#/$defs/ip4_opt"
+            },
+            "dns1": {
+              "$ref": "common.schema.json#/$defs/ip4_opt"
+            },
+            "dns2": {
+              "$ref": "common.schema.json#/$defs/ip4_opt"
+            }
+          },
+          "additionalProperties": false
+        },
+        "hostname": {
+          "$ref": "common.schema.json#/$defs/hostname"
+        },
+        "ap": {
+          "type": "object",
+          "properties": {
+            "fallback": {
+              "type": "boolean"
+            },
+            "ssid": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "channel": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 13
+            },
+            "idle_min": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 120
+            },
+            "fallback_after_s": {
+              "type": "integer",
+              "minimum": 30,
+              "maximum": 3600
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "modbus": {
+      "type": "object",
+      "properties": {
+        "devices": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "common.schema.json#/$defs/dev"
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 23,
+                "description": "UTF-8, at most 23 bytes (firmware checks bytes; maxLength is only an upper bound)"
+              },
+              "slave": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 247
+              },
+              "enabled": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name",
+              "slave",
+              "enabled"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 4
+        },
+        "port": {
+          "type": "object",
+          "properties": {
+            "baud": {
+              "enum": [
+                1200,
+                2400,
+                4800,
+                9600,
+                19200,
+                38400,
+                57600,
+                115200
+              ]
+            },
+            "parity": {
+              "type": "string",
+              "enum": [
+                "N",
+                "E",
+                "O"
+              ]
+            },
+            "stop": {
+              "enum": [
+                1,
+                2
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "baud",
+            "parity",
+            "stop"
+          ]
+        },
+        "poll_ms": {
+          "type": "integer",
+          "minimum": 200,
+          "maximum": 60000
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "minimum": 50,
+          "maximum": 2000
+        },
+        "retries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "gap_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "offline_after": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "devices",
+        "port",
+        "poll_ms",
+        "timeout_ms",
+        "retries",
+        "gap_ms",
+        "offline_after"
+      ]
+    },
+    "alarms": {
+      "type": "object",
+      "properties": {
+        "debounce_raise": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "debounce_clear": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "sev_override": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "common.schema.json#/$defs/alarm_id"
+          },
+          "additionalProperties": {
+            "$ref": "common.schema.json#/$defs/sev"
+          },
+          "maxProperties": 16,
+          "description": "alarm id -> severity; replaces the whole map when present"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 23,
+                "description": "UTF-8, at most 23 bytes (firmware checks bytes; maxLength is only an upper bound)"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "dev": {
+                "$ref": "common.schema.json#/$defs/dev"
+              },
+              "src": {
+                "type": "string",
+                "description": "temp = 40036, hum = 40037, cur = 40011, or reg:<addr>. Responses use the canonical form: reg:40036/40037/40011 are returned as temp/hum/cur.",
+                "pattern": "^(temp|hum|cur|reg:400[0-5][0-9])$"
+              },
+              "op": {
+                "type": "string",
+                "enum": [
+                  ">",
+                  "<"
+                ]
+              },
+              "thr": {
+                "type": "number",
+                "description": "scaled value of the source register"
+              },
+              "hyst": {
+                "type": "number",
+                "minimum": 0
+              },
+              "delay_s": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 3600
+              },
+              "sev": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 3
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name",
+              "enabled",
+              "dev",
+              "src",
+              "op",
+              "thr",
+              "hyst",
+              "delay_s",
+              "sev"
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 8
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "debounce_raise",
+        "debounce_clear",
+        "sev_override",
+        "rules"
+      ]
+    },
+    "snmp": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "v1": {
+          "type": "boolean"
+        },
+        "v2c": {
+          "type": "boolean"
+        },
+        "auth_traps": {
+          "type": "boolean"
+        },
+        "v3": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "users": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 32,
+                    "pattern": "^[A-Za-z0-9_.-]+$"
+                  },
+                  "access": {
+                    "type": "string",
+                    "enum": [
+                      "ro",
+                      "rw"
+                    ]
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          },
+          "additionalProperties": false
+        },
+        "traps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "host": {
+                "$ref": "common.schema.json#/$defs/ip4"
+              },
+              "port": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 65535
+              },
+              "version": {
+                "type": "string",
+                "enum": [
+                  "v1",
+                  "v2c"
+                ]
+              },
+              "inform": {
+                "type": "boolean"
+              },
+              "enabled": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          "minItems": 0,
+          "maxItems": 4
+        },
+        "sys": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "$ref": "common.schema.json#/$defs/text"
+            },
+            "contact": {
+              "$ref": "common.schema.json#/$defs/text"
+            },
+            "location": {
+              "$ref": "common.schema.json#/$defs/text"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "time": {
+      "type": "object",
+      "properties": {
+        "ntp": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "servers": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/host"
+              },
+              "minItems": 0,
+              "maxItems": 2
+            },
+            "interval_min": {
+              "type": "integer",
+              "minimum": 15,
+              "maximum": 1440
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "servers",
+            "interval_min"
+          ]
+        },
+        "tz": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 47,
+          "pattern": "^[A-Za-z<>+\\-0-9,.:/]+$",
+          "description": "POSIX TZ, e.g. KST-9"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "ntp",
+        "tz"
+      ]
+    },
+    "security": {
+      "type": "object",
+      "properties": {
+        "idle_min": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 120
+        },
+        "lockout": {
+          "type": "object",
+          "properties": {
+            "max_fail": {
+              "type": "integer",
+              "minimum": 3,
+              "maximum": 10
+            },
+            "lock_min": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 30
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "max_fail",
+            "lock_min"
+          ]
+        },
+        "ip_allow": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/cidr"
+          },
+          "minItems": 0,
+          "maxItems": 8
+        },
+        "services": {
+          "type": "object",
+          "properties": {
+            "snmp": {
+              "type": "boolean"
+            },
+            "syslog": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "snmp",
+            "syslog"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "idle_min",
+        "lockout",
+        "ip_allow",
+        "services"
+      ]
+    },
+    "notify": {
+      "type": "object",
+      "properties": {
+        "syslog": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "host": {
+              "anyOf": [
+                {
+                  "$ref": "common.schema.json#/$defs/host"
+                },
+                {
+                  "type": "string",
+                  "maxLength": 0
+                }
+              ]
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "facility": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 23
+            },
+            "min_sev": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 7
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "host",
+            "port",
+            "facility",
+            "min_sev"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "syslog"
+      ]
+    }
+  },
+  "additionalProperties": true,
+  "required": [
+    "schema"
+  ]
+}

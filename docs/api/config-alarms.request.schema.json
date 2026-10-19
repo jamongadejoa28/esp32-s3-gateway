@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/config-alarms.request.schema.json",
+  "title": "PUT /config/alarms",
+  "type": "object",
+  "properties": {
+    "debounce_raise": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10
+    },
+    "debounce_clear": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10
+    },
+    "sev_override": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "common.schema.json#/$defs/alarm_id"
+      },
+      "additionalProperties": {
+        "$ref": "common.schema.json#/$defs/sev"
+      },
+      "maxProperties": 16,
+      "description": "alarm id -> severity; replaces the whole map when present"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/config-time.response.schema.json",
+  "title": "GET /config/time",
+  "type": "object",
+  "properties": {
+    "ntp": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "servers": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/host"
+          },
+          "minItems": 0,
+          "maxItems": 2
+        },
+        "interval_min": {
+          "type": "integer",
+          "minimum": 15,
+          "maximum": 1440
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "servers",
+        "interval_min"
+      ]
+    },
+    "tz": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 47,
+      "pattern": "^[A-Za-z<>+\\-0-9,.:/]+$",
+      "description": "POSIX TZ, e.g. KST-9"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "ntp",
+    "tz"
+  ]
+}

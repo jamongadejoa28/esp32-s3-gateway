@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/devices.response.schema.json",
+  "title": "GET /devices",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "$ref": "common.schema.json#/$defs/dev"
+      },
+      "name": {
+        "type": "string",
+        "maxLength": 23,
+        "description": "UTF-8, at most 23 bytes (firmware checks bytes; maxLength is only an upper bound)"
+      },
+      "slave": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 247
+      },
+      "enabled": {
+        "type": "boolean"
+      },
+      "online": {
+        "type": "boolean"
+      },
+      "last_ms": {
+        "$ref": "common.schema.json#/$defs/epoch_ms_opt"
+      },
+      "seq": {
+        "$ref": "common.schema.json#/$defs/u32"
+      }
+    },
+    "additionalProperties": false,
+    "required": [
+      "id",
+      "name",
+      "slave",
+      "enabled",
+      "online",
+      "last_ms",
+      "seq"
+    ]
+  }
+}

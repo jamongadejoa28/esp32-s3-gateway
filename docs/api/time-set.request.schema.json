@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/time-set.request.schema.json",
+  "title": "POST /time",
+  "type": "object",
+  "properties": {
+    "epoch_ms": {
+      "type": "integer",
+      "minimum": 1704067200000,
+      "maximum": 4102444800000
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "epoch_ms"
+  ]
+}

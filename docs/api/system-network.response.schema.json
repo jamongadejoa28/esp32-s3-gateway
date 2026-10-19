@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/system-network.response.schema.json",
+  "title": "GET /system/network",
+  "type": "object",
+  "properties": {
+    "eth": {
+      "type": "object",
+      "properties": {
+        "link": {
+          "type": "boolean"
+        },
+        "has_ip": {
+          "type": "boolean"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "static",
+            "dhcp"
+          ]
+        },
+        "ip": {
+          "$ref": "common.schema.json#/$defs/ip4_opt"
+        },
+        "mask": {
+          "$ref": "common.schema.json#/$defs/ip4_opt"
+        },
+        "gw": {
+          "$ref": "common.schema.json#/$defs/ip4_opt"
+        },
+        "dns1": {
+          "$ref": "common.schema.json#/$defs/ip4_opt"
+        },
+        "dns2": {
+          "$ref": "common.schema.json#/$defs/ip4_opt"
+        },
+        "mac": {
+          "type": "string",
+          "pattern": "^([0-9a-f]{2}:){5}[0-9a-f]{2}$"
+        },
+        "link_changes": {
+          "$ref": "common.schema.json#/$defs/u32"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "link",
+        "has_ip",
+        "mode",
+        "ip",
+        "mask",
+        "gw",
+        "dns1",
+        "dns2",
+        "mac",
+        "link_changes"
+      ]
+    },
+    "ap": {
+      "type": "object",
+      "properties": {
+        "active": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "none",
+            "button",
+            "no_link",
+            "console"
+          ]
+        },
+        "clients": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "ssid": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "ip": {
+          "$ref": "common.schema.json#/$defs/ip4_opt"
+        },
+        "off_in_s": {
+          "$ref": "common.schema.json#/$defs/u32"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "active",
+        "reason",
+        "clients",
+        "ssid",
+        "ip",
+        "off_in_s"
+      ]
+    },
+    "provisional": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "state": {
+              "type": "string",
+              "enum": [
+                "apply_pending",
+                "await_confirm"
+              ]
+            },
+            "left_s": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 600
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "left_s"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "sntp": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "synced": {
+          "type": "boolean"
+        },
+        "last_ms": {
+          "$ref": "common.schema.json#/$defs/epoch_ms_opt"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "synced",
+        "last_ms"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "eth",
+    "ap",
+    "provisional",
+    "sntp"
+  ]
+}

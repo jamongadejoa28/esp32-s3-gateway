@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/config-security.request.schema.json",
+  "title": "PUT /config/security",
+  "type": "object",
+  "properties": {
+    "idle_min": {
+      "type": "integer",
+      "minimum": 5,
+      "maximum": 120
+    },
+    "lockout": {
+      "type": "object",
+      "properties": {
+        "max_fail": {
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 10
+        },
+        "lock_min": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        }
+      },
+      "additionalProperties": false
+    },
+    "ip_allow": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/cidr"
+      },
+      "minItems": 0,
+      "maxItems": 8
+    },
+    "services": {
+      "type": "object",
+      "properties": {
+        "snmp": {
+          "type": "boolean"
+        },
+        "syslog": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

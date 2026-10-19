@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/meta-alarms.response.schema.json",
+  "title": "GET /meta/alarms",
+  "description": "Generated from alarm_catalog.def; sev is the effective severity (after overrides).",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "$ref": "common.schema.json#/$defs/alarm_id"
+      },
+      "code": {
+        "type": "integer",
+        "minimum": 100,
+        "maximum": 999
+      },
+      "sev": {
+        "$ref": "common.schema.json#/$defs/sev"
+      },
+      "ko": {
+        "type": "string",
+        "maxLength": 32
+      },
+      "en": {
+        "type": "string",
+        "maxLength": 48
+      },
+      "source": {
+        "type": "string",
+        "pattern": "^(coil:[0-9]{1,2}|bit:400[0-5][0-9]\\.[0-9]{1,2}|comm|rule:[1-8])$"
+      }
+    },
+    "additionalProperties": false,
+    "required": [
+      "id",
+      "code",
+      "sev",
+      "ko",
+      "en",
+      "source"
+    ]
+  }
+}

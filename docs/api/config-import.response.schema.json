@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/config-import.response.schema.json",
+  "title": "POST /system/config/import 200",
+  "type": "object",
+  "properties": {
+    "rev": {
+      "$ref": "common.schema.json#/$defs/u32"
+    },
+    "changed": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "general",
+          "network",
+          "modbus",
+          "alarms",
+          "snmp",
+          "time",
+          "security",
+          "notify"
+        ]
+      }
+    },
+    "network": {
+      "anyOf": [
+        {
+          "$ref": "network-apply.response.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "rev",
+    "changed",
+    "network"
+  ]
+}
