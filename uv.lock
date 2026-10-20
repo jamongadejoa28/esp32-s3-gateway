@@ -532,6 +532,24 @@ wheels = [
 ]
 
 [[package]]
+name = "littlefs-python"
+version = "0.19.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d8/2d/22e8b009632efa8c917724e4e20e30b57be8b9ae6acf403ac8f1887bb205/littlefs_python-0.19.0.tar.gz", hash = "sha256:4ce8c6eeeb2703abaf8cb60f2dab624b17af42b13df3dbc6c42d4142bad79a59", size = 529397, upload-time = "2026-08-17T19:28:57.848Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2f/eb/418abffd30cdd9240daf2b6155d3aea5ead05c24ebe6627a8b66ba55270c/littlefs_python-0.19.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:947b3590e995d022051509c58c310550478f47074dca58479217b5938d5b7128", size = 188181, upload-time = "2026-08-17T19:28:01.592Z" },
+    { url = "https://files.pythonhosted.org/packages/75/1f/9d5d7cd2ae2a1e553ba65a314bd16436fbccb36c26fff380add605cac6f8/littlefs_python-0.19.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:986360d0fe75a123f156b5d6009cbc100ed2d2b966bada9b180ce7ff0faa43ee", size = 181260, upload-time = "2026-08-17T19:28:02.752Z" },
+    { url = "https://files.pythonhosted.org/packages/e0/01/2f032bd9a730fd69c842f905ab65d65ccfa0fcca2f5a36a8609c9028b666/littlefs_python-0.19.0-cp312-cp312-manylinux1_i686.manylinux_2_28_i686.manylinux_2_5_i686.whl", hash = "sha256:19d436537ace9f01d0f43b0453242d3aad3132abf97c5265302f03d84cc56482", size = 969845, upload-time = "2026-08-17T19:28:03.976Z" },
+    { url = "https://files.pythonhosted.org/packages/42/70/0df951bdbe457abc2eb41ae6f0a06660b6f91decd06c70da82847ce1830e/littlefs_python-0.19.0-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:5a9a84ac0a4da2e37f9bfed0ecf70d2a8c57063000a39e93d1e4ab247643e7bd", size = 998258, upload-time = "2026-08-17T19:28:05.031Z" },
+    { url = "https://files.pythonhosted.org/packages/99/2c/582c76811d6c799165619b618a1c4dc07178282ab55373aed31ba4c26976/littlefs_python-0.19.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:53edd72cbce541939beec404a5509f4afc08ef694759201ffe91aff8adc5f254", size = 1031427, upload-time = "2026-08-17T19:28:06.97Z" },
+    { url = "https://files.pythonhosted.org/packages/cf/c1/8b32e72fcd8e6a6d310ac617096f93809bac62827169d5e6f7ab0fa724e8/littlefs_python-0.19.0-cp312-cp312-musllinux_1_2_i686.whl", hash = "sha256:30b3c6c8f7e85526747eb8188c2b8ccf572ac1701c7ecf4949b1231de0ced510", size = 973692, upload-time = "2026-08-17T19:28:08.046Z" },
+    { url = "https://files.pythonhosted.org/packages/14/25/0a0025552605dedf9846661eb930e6639dfab49cb3bbc7907b10e08b23c1/littlefs_python-0.19.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:c8d017ff77bd7435bdacb4d94e7f7c53aceab0bed5ada73940be9ed5ba4e205e", size = 1005544, upload-time = "2026-08-17T19:28:09.351Z" },
+    { url = "https://files.pythonhosted.org/packages/62/81/48cb5e64be3b8250d5e5df8afaa568a5065760b74f4a5e302a96a03c7336/littlefs_python-0.19.0-cp312-cp312-win32.whl", hash = "sha256:012a4117d9e07376100907ae737ee35b48d58e394a17b00f3cbcd83d24d353bb", size = 132358, upload-time = "2026-08-17T19:28:10.487Z" },
+    { url = "https://files.pythonhosted.org/packages/f0/52/66fab84b0168d9fdf652e5cc3978ac816ec533fbfc742d974920efe9c2c9/littlefs_python-0.19.0-cp312-cp312-win_amd64.whl", hash = "sha256:0aaae1347d5a05da5e582b0d4c241d70b2736d01e5dbc58f9ae39ac659fc8393", size = 160847, upload-time = "2026-08-17T19:28:12.337Z" },
+    { url = "https://files.pythonhosted.org/packages/d0/07/e3c3296af085547b3fb4c6ad25bf330bd9c17a2805ccb33a14f2b0b9f7c6/littlefs_python-0.19.0-cp312-cp312-win_arm64.whl", hash = "sha256:c170794e550c18853f2ea1767df526aa879c27c963064cd88920994430cc6ffb", size = 137698, upload-time = "2026-08-17T19:28:13.365Z" },
+]
+
+[[package]]
 name = "markdown-it-py"
 version = "4.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -617,6 +635,7 @@ dev = [
     { name = "idf-component-manager" },
     { name = "idf-drivers-gdb" },
     { name = "jsonschema" },
+    { name = "littlefs-python" },
     { name = "ninja" },
     { name = "packaging" },
     { name = "psutil" },
@@ -657,6 +676,7 @@ dev = [
     { name = "idf-component-manager", specifier = ">=2.2" },
     { name = "idf-drivers-gdb", specifier = ">=0.1.1" },
     { name = "jsonschema", specifier = ">=4.23" },
+    { name = "littlefs-python", specifier = "==0.19.0" },
     { name = "ninja", specifier = ">=1.13.2" },
     { name = "packaging", specifier = ">=26.3" },
     { name = "psutil", specifier = ">=7.0.0" },

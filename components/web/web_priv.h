@@ -79,6 +79,7 @@ extern const size_t web_api_routes_count;
 esp_err_t web_api_config_init(void);
 
 /* ---- static UI (static.c) ---- */
+esp_err_t web_assets_mount(void);
 
 /** Serve a GET for a non-/api path. Sends 404 when no asset matches. */
 esp_err_t web_static_serve(httpd_req_t *req, const char *path, size_t len);

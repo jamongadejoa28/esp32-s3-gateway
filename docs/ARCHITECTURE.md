@@ -235,8 +235,8 @@ sysmgr writes the RTC (source ≠ RTC) · eventlog `time_set` · history starts 
 
 ### 4.6 Firmware update
 
-httpd (RAW_BODY route) → `sys_ota_begin` → `sys_ota_write` per chunk (hash + `esp_ota_write`) →
-`sys_ota_end` (hash compare, app desc checks, set boot) → `GW_EVT_OTA{DONE}` →
+httpd (RAW_BODY route, `.gwota` package) → validate 80-byte header → `sys_ota_begin` → `sys_ota_write` per chunk (hash + `esp_ota_write`) →
+write paired inactive web partition → verify whole-package SHA-256, web readback SHA-256, LittleFS mount and asset identity in new app → `sys_ota_end` (app hash compare, app desc checks, set boot) → `GW_EVT_OTA{DONE}` →
 `sys_reboot(OTA, 2000)` → `GW_EVT_REBOOT` (web's ws_hub handler: bye "reboot"; history flush
 request; sysmgr never calls web) → `persist_flush` → restart → boot in PENDING_VERIFY (`GW_EVT_OTA{PENDING}`) → supervisor after 60 s
 healthy → mark valid → `GW_EVT_OTA{VALIDATED}` → SNMP `gwFirmwareUpdated`.
@@ -320,7 +320,7 @@ an SNMP walk (Phase 2).
 | SNMP trap queue | 16 × 96 B | internal | FreeRTOS queue |
 | lwIP pbufs, Wi-Fi buffers | IDF | PSRAM preferred | `SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y` |
 | ETH/SPI DMA, httpd sockets | IDF | internal | IDF defaults (DESIGN.md §4) |
-| Web assets (gz) ≤ 64 KB | flash (rodata) | XIP | generated `web_assets.c` |
+| Web asset gzip bodies | paired LittleFS in flash | 1 KiB read buffer | `web_0`/`web_1`; metadata only in `web_assets.c` |
 
 Anything touched from an ISR or with the flash cache disabled (UART ISR, `IRAM_ATTR` code) must be
 internal RAM; nothing in this design shares PSRAM data with ISRs. With `CONFIG_SPIRAM_XIP_FROM_PSRAM=y`

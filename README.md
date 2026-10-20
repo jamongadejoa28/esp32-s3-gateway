@@ -5,7 +5,7 @@ RS485(Modbus RTU)로 **MEX150** 항온항습기 컨트롤러와 통신하고, �
 상태·경보·설정값을 제공합니다.
 
 - 펌웨어: ESP-IDF **v6.1**, W5500 이더넷, 복구용 Wi-Fi SoftAP, LittleFS, OTA(롤백 지원)
-- 웹 UI: 의존성 없는 SPA(gzip 64 KB 예산), 실시간 차트 대시보드, 한국어/영어, 라이트/다크
+- 웹 UI: 순수 HTML·CSS·JavaScript SPA(LittleFS 저장, gzip 256 KiB 초과 시 검토 경고), 실시간 차트 대시보드, 한국어/영어, 라이트/다크
 - SNMP: MIB-II system + 엔터프라이즈 MIB(`MESTIO-GW-MIB`), 트랩/인폼, 외부 통합관제 연동용 확장 구조
 
 상세 문서: [DESIGN](docs/DESIGN.md) · [ARCHITECTURE](docs/ARCHITECTURE.md) · [API](docs/API.md) ·
@@ -57,27 +57,38 @@ PC를 192.168.10.0/24(예: 192.168.10.20)로 설정한 뒤 `http://192.168.10.15
 
 ### VS Code (ESP-IDF 확장 v6.1)
 1. ESP-IDF 확장 설치 후 이 폴더를 엽니다. `.vscode/settings.json`이 IDF 경로
-   (`/home/hajun/esp-idf-v6.1`), 대상 `esp32s3`, 프로젝트 `.venv`, Node v24 PATH를 지정합니다.
+   (`/home/hajun/esp-idf-v6.1/v6.1/esp-idf`), 도구 루트 `/home/hajun/.espressif`, 대상 `esp32s3`,
+   프로젝트 `.venv`, Node v24 PATH를 지정합니다. 설정 변경 후에는 **Developer: Reload Window**를 실행합니다.
 2. 확장의 **Build** 버튼 또는 작업 **GW: build (IDF 6.1)** 실행. 웹 UI는 CMake 빌드 중에 자동으로 번들링되어
-   펌웨어에 포함됩니다(Node v24 필요).
+   별도 LittleFS 이미지로 생성됩니다(Node v24는 개발 PC의 빌드에만 필요).
 3. 플래시는 수동: 확장의 Flash(UART, 포트 직접 선택) 또는 작업 **GW: HARDWARE flash + monitor**
    (`tools/run_device.py --port <포트> --yes`, 두 옵션이 모두 있어야 실행).
 
 ### CLI
 ```sh
-uv sync --locked                                   # 최초 1회 (.venv)
-uv run --locked python tools/idf.py build          # → build/mestio_gw.bin
+uv sync --locked                                   # 최초 1회 (.venv, LittleFS 이미지 도구 포함)
+npm ci                                             # 웹 빌드 도구 설치
+uv run --locked python tools/idf.py build          # → mestio_gw.bin + web.bin + mestio_gw.gwota
 uv run --locked python tools/idf.py size
 ```
-현재 크기: 이미지 1,425,984 B (OTA 슬롯 3 MB의 45 %), 정적 내부 RAM(DIRAM) 129,438 / 341,760 B,
-PSRAM .bss 35,076 B, 웹 UI gzip 64,917 / 65,536 B.
+앱 슬롯은 각각 2.5 MiB이고, 각 슬롯 뒤의 512 KiB LittleFS(`web_0`, `web_1`)에 웹 파일을 저장합니다.
+`data` 파티션의 위치·크기는 유지합니다. 실제 앱 크기는 빌드 출력 또는 `idf.py size`로 확인합니다.
+웹 파일은 1 KiB 버퍼로 스트리밍하며 전체 자산을 PSRAM에 복사하지 않습니다. Node.js는 ESP32나
+사용자 브라우저에서 실행되지 않습니다. 화면 구성·차트는 사용자 브라우저에서 실행됩니다.
+
+**기존 펌웨어에서 최초 전환:** 파티션 테이블이 바뀌므로 USB로 전체 `flash`를 한 번 실행해야 합니다.
+기존 OTA 웹페이지에 새 `.bin`/`.gwota`를 올리는 방식으로는 파티션을 전환할 수 없습니다.
+`flash`에는 새 파티션 테이블·앱·양쪽 웹 이미지가 포함되며 `data`/NVS를 지우는 erase-flash는 필요 없습니다.
+실제 장치 작업은 사용자가 수동 실행합니다. 이후 웹 업데이트에는 **`build/mestio_gw.gwota`**를 선택합니다.
+앱과 웹을 비활성 슬롯 쌍에 기록·검증한 다음 부팅 슬롯을 바꾸므로 자동/수동 롤백 시 이전 웹도 선택됩니다.
+독립 `.bin` 업로드는 웹과 백엔드 버전 불일치를 막기 위해 거부합니다.
 
 ## 5. 웹 개발 (모의 서버)
 
 ```sh
-export PATH=$HOME/.nvm/versions/node/v24.14.0/bin:$PATH
+export PATH=$HOME/.nvm/versions/node/v24.15.0/bin:$PATH
 npm ci
-npm run build:web                                  # web/dist + gzip 예산 검사(64 KB)
+npm run build:web                                  # web/dist + gzip 크기 보고(256 KiB 초과 경고)
 node tools/mock_server.mjs --port 8080             # http://127.0.0.1:8080, 초기 계정 admin/mestio150!
 node tools/mock_server.mjs --dev --ready           # 소스 직접 서빙, admin 비밀번호 Mestio-Admin#2026
 node tools/mock_server.mjs --proxy http://192.168.10.150   # /api, /ws를 실제 장비로 전달

@@ -16,7 +16,7 @@ const CFG_SEC_SECRETS = 0x7f; // components/store/include/store/config.h: secret
 export function sectionLabel(s) {
   return t(s === 'notify' ? 'sl.title' : SECTIONS.includes(s) || s === 'secrets' ? `set.${s}` : 'set.general');
 }
-const MAX_FW = 3 * 1024 * 1024;
+const MAX_FW = 3 * 1024 * 1024 + 80;
 const hex = (n) => `0x${(n >>> 0).toString(16).padStart(8, '0')}`;
 /** esp_reset_reason_t as text (the number when there is no name for it). */
 export function rstText(n) {
@@ -78,7 +78,7 @@ export function mount(el, scope, { admin }) {
 
   // ---- firmware ----
   const fwInfo = h('dl.kv');
-  const file = h('input.sr', { type: 'file', accept: '.bin,application/octet-stream' });
+  const file = h('input.sr', { type: 'file', accept: '.gwota' });
   const fileName = h('span.fname', { text: t('fw.no_file') });
   const hashEl = h('div.hash.muted');
   const allowDown = h('input', { type: 'checkbox', id: 'fw-down' });

@@ -199,10 +199,11 @@ uv run --locked python tools/snmp_smoke.py --host 192.168.10.150 --community '<r
 - [ ] **Spoofed loopback source**: with an `ip_allow` list that excludes the PC, send a v2c GET from the LAN with source 127.0.0.1 (e.g. `scapy`: `send(IP(src='127.0.0.1',dst='192.168.10.150')/UDP(sport=40000,dport=161)/SNMP(community='<ro>',PDU=SNMPget(varbindlist=[SNMPvarbind(oid=ASN1_OID('1.3.6.1.2.1.1.1.0'))])))`) → no response and no agent activity (dropped by the `LWIP_HOOK_IP4_INPUT` martian check).
 
 ## 7. OTA and rollback
-- [ ] Build a new version (`version.txt` +1), upload in the UI (System → Firmware) with progress: `{version, reboot_in_s:2}`, reboot, `GET /system/firmware` → running `pending_verify`, after 60 s healthy → `valid` (event log `ota`, SNMP `gwFirmwareUpdated`).
+- [ ] Initial migration: USB flash the new partition table, app and both web images; verify existing `data`/NVS survive. Later updates: build a new version (`version.txt` +1), upload `build/mestio_gw.gwota` in the UI (System → Firmware) with progress: `{version, reboot_in_s:2}`, reboot, `GET /system/firmware` → running `pending_verify`, after 60 s healthy → `valid` (event log `ota`, SNMP `gwFirmwareUpdated`).
+- [ ] Interrupt an upload while writing LittleFS: the running app/UI remain usable. Complete the next update, then roll back: the prior app and its own web assets return. A mismatched app/web package must be rejected before boot selection.
 - [ ] **Rollback on boot failure**: upload an image built with a deliberate `abort()` early in `app_main` (temporary local change, never committed) → bootloader rolls back to the previous slot; `GET /system/firmware` shows the old version `valid`, other slot invalid.
 - [ ] **Rollback on unhealthy image**: an image whose `mex_poll` or `persist` never beats (e.g. temporary change) is never marked valid → after reset it rolls back.
-- [ ] Hash mismatch (`X-Firmware-SHA256` wrong) → 422 `hash_mismatch`, running image unaffected; wrong project / truncated image → 422 `image_invalid`; downgrade → 422 unless `?allow_downgrade=1`; second concurrent upload → 423 `locked`; > 3 MB → 413.
+- [ ] Hash mismatch (`X-Firmware-SHA256` wrong on a valid `.gwota`) → 422 `hash_mismatch`, running image unaffected; wrong project / invalid package → 422 `image_invalid`; downgrade → 422 unless `?allow_downgrade=1`; second concurrent upload → 423 `locked`; > 3 MiB + 80 bytes → 413.
 - [ ] `POST /system/firmware/rollback` → reboot into the other valid slot; 404 if none.
 - [ ] Power loss during upload (pull power at ~50 %): device boots the old image, next upload works.
 - [ ] **Mark-valid blocked by an init fault**: an image that boots with a latched FS/STORE/NET/WEB/CORE init fault (temporary local change, e.g. `sys_init_fault_set(SYS_INIT_FAULT_WEB)` after `web_start()`) stays `pending_verify`, shows the FAULT LED and reboots into the previous image after `SYS_PENDING_VERIFY_LIMIT_MS` (300 s). An image with only an SNMP/SYSLOG fault is marked valid.
@@ -234,7 +235,7 @@ uv run --locked python tools/snmp_smoke.py --host 192.168.10.150 --community '<r
 - [ ] Core dump: trigger a panic (console `panic` / debug command) → after reboot `GET /system/coredump` returns the summary (task, PC, backtrace); `idf.py coredump-info` over USB decodes the ELF.
 
 ## 11. Browser performance
-- [ ] LAN, cache disabled: first load ≤ 7 requests, total transfer ≤ 64 KB gz UI + API, TTI < 1 s.
+- [ ] LAN and recovery AP, cache disabled: first load ≤ 7 requests; record gzip UI/API bytes and TTI (LAN target < 1 s). Review UI above 256 KiB gzip using measured loading time; filesystem capacity, rather than 64 KiB, is the storage limit.
 - [ ] Dashboard with live charts: frame time ≤ 16 ms (Performance panel), idle CPU near 0 when the tab is hidden.
 
 ## 12. 72 h soak

@@ -23,3 +23,4 @@ foreach(d LWIP_SNMP=1 SNMP_USE_NETCONN=1 SNMP_USE_RAW=0 LWIP_SNMP_V3=1 LWIP_SNMP
 endforeach()
 
 project(mestio_gw)
+gw_web_images()

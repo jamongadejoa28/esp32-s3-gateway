@@ -14,6 +14,7 @@
 #include "gw_core/gw_crypto.h"
 #include "gw_core/gw_health.h"
 #include "net/net.h"
+#include "sysmgr/sysmgr.h"
 #include "web/web.h"
 #include "web/ws_hub.h"
 #include "web_priv.h"
@@ -230,8 +231,8 @@ static esp_err_t async_init(void) {
         if (!lane->q) {
             return ESP_ERR_NO_MEM;
         }
-        if (xTaskCreatePinnedToCore(async_task, lane->name, ASYNC_TASK_STACK, lane, ASYNC_TASK_PRIO, &lane->task,
-                                    ASYNC_TASK_CORE) != pdPASS) {
+        if (xTaskCreatePinnedToCore(async_task, lane->name, ASYNC_TASK_STACK, lane, ASYNC_TASK_PRIO,
+                                    &lane->task, ASYNC_TASK_CORE) != pdPASS) {
             vQueueDelete(lane->q);
             lane->q = NULL;
             return ESP_ERR_NO_MEM;
@@ -262,6 +263,12 @@ esp_err_t web_start(void) {
         return ESP_ERR_INVALID_STATE;
     }
     web_cjson_hooks_install();
+    esp_err_t mount_err = web_assets_mount();
+    if (mount_err != ESP_OK) {
+        /* Keep authenticated API access available for recovery; never format a missing/corrupt UI. */
+        ESP_LOGE(TAG, "web LittleFS unavailable: %s", esp_err_to_name(mount_err));
+        sys_init_fault_set(SYS_INIT_FAULT_WEB); /* an OTA image without its UI must not be marked valid */
+    }
     esp_err_t err = web_router_register(web_api_routes, web_api_routes_count);
     if (err != ESP_OK) {
         return err;

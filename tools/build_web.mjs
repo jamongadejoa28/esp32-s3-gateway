@@ -8,7 +8,7 @@
 //   MESTIO_Symbol.svg -> metadata (<title>/<desc>) stripped, minified -> favicon.svg
 // Every file is also written gzip -9 (<file>.gz). manifest.json lists {path, file, gz, mime, etag,
 // immutable, size, gz_size} sorted by path (the input of tools/gen_web_assets.py); a size report
-// is printed and the build FAILS when the gzip total exceeds 64 KB.
+// is printed. 256 KiB is a warning threshold; the LittleFS image build enforces physical capacity.
 //
 //   node tools/build_web.mjs [--out DIR] [--quiet]
 import { createHash } from 'node:crypto';
@@ -19,7 +19,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const WEB = join(ROOT, 'web');
-export const BUDGET_GZ = 64 * 1024;
+export const BUDGET_GZ = 256 * 1024;
 
 const sha = (buf) => createHash('sha256').update(buf).digest('hex');
 
@@ -165,8 +165,8 @@ async function i18nPlugin() {
 const MIME = { html: 'text/html; charset=utf-8', js: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8', svg: 'image/svg+xml', json: 'application/json' };
 
 /**
- * Build into `out`. Returns {assets, totalGz}. Throws on esbuild errors; returns ok=false when the
- * budget is exceeded (the CLI exits 1).
+ * Build into `out`. Returns {ok, assets, totalGz}. Throws on build errors; gzip size above the
+ * review threshold warns. Physical capacity is checked when building the LittleFS image.
  */
 export async function build({ out = join(WEB, 'dist'), quiet = false } = {}) {
   const esbuild = await import('esbuild');
@@ -237,7 +237,8 @@ export async function build({ out = join(WEB, 'dist'), quiet = false } = {}) {
     for (const a of assets) console.log(`${pad(a.path, 34)}${padL(a.size, 9)}${padL(a.gz_size, 9)}`);
     console.log(`${pad('total', 34)}${padL(total, 9)}${padL(totalGz, 9)}  (budget ${BUDGET_GZ}, ${((totalGz / BUDGET_GZ) * 100).toFixed(1)} % used)`);
   }
-  return { ok: totalGz <= BUDGET_GZ, assets, totalGz, out };
+  if (totalGz > BUDGET_GZ) console.warn(`build_web: gzip total ${totalGz} B exceeds the ${BUDGET_GZ} B review threshold`);
+  return { ok: true, assets, totalGz, out };
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
@@ -248,12 +249,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
     if (!args[i + 1]) { console.error('--out needs a directory'); process.exit(2); }
     o.out = args[i + 1];
   }
-  build(o).then((r) => {
-    if (!r.ok) {
-      console.error(`build_web: gzip total ${r.totalGz} B exceeds the ${BUDGET_GZ} B budget`);
-      process.exit(1);
-    }
-  }).catch((e) => {
+  build(o).catch((e) => {
     console.error(`build_web: ${e.message}`);
     if (e.errors) for (const x of e.errors) console.error(`  ${x.location ? `${x.location.file}:${x.location.line}: ` : ''}${x.text}`);
     process.exit(1);

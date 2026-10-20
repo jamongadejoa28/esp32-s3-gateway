@@ -1,18 +1,20 @@
 {
   "idf.extensionActivationMode": "always",
-  "idf.currentSetup": "/home/hajun/esp-idf-v6.1",
+  "idf.currentSetup": "/home/hajun/esp-idf-v6.1/v6.1/esp-idf",
   "idf.buildPath": "${workspaceFolder}/build",
   "idf.customExtraVars": {
     "IDF_TARGET": "esp32s3",
-    "IDF_PATH": "/home/hajun/esp-idf-v6.1",
-    "IDF_TOOLS_PATH": "/home/hajun/dev_ws/wokwipj/.tools/espressif",
-    "IDF_PYTHON_ENV_PATH": "/home/hajun/dev_ws/esp32-s3-gateway/.venv"
+    "IDF_PATH": "/home/hajun/esp-idf-v6.1/v6.1/esp-idf",
+    "IDF_TOOLS_PATH": "/home/hajun/.espressif",
+    "IDF_PYTHON_ENV_PATH": "/home/hajun/dev_ws/esp32-s3-gateway/.venv",
+    "PYTHON": "/home/hajun/dev_ws/esp32-s3-gateway/.venv/bin/python"
   },
   "terminal.integrated.env.linux": {
-    "PATH": "/home/hajun/.nvm/versions/node/v24.14.0/bin:${env:PATH}"
+    "PATH": "${workspaceFolder}/.venv/bin:/home/hajun/.nvm/versions/node/v24.15.0/bin:${env:PATH}"
   },
   "C_Cpp.default.compileCommands": "${workspaceFolder}/build/compile_commands.json",
   "idf.flashType": "UART",
   "files.associations": { "*.def": "c" },
-  "editor.formatOnSave": false
+  "editor.formatOnSave": false,
+  "idf.port": "/dev/ttyACM0"
 }

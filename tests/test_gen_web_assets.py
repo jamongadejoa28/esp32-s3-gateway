@@ -48,7 +48,16 @@ int main(void) {
         if (i && strcmp(gw_web_assets[i - 1].path, a->path) >= 0) { puts("UNSORTED"); return 1; }
         if (find(a->path) != a) { puts("BISECT"); return 1; }
         printf("%s\t%s\t%s\t%u\t%d\t", a->path, a->mime, a->etag, (unsigned)a->len, (int)a->immutable);
-        for (uint32_t j = 0; j < a->len; j++) printf("%02x", a->gz[j]);
+        char path[512];
+        snprintf(path, sizeof(path), "%s/%s", WEB_FS_ROOT, a->file);
+        FILE *f = fopen(path, "rb");
+        if (!f) return 2;
+        for (uint32_t j = 0; j < a->len; j++) {
+            int ch = fgetc(f);
+            if (ch == EOF) return 3;
+            printf("%02x", (unsigned)ch);
+        }
+        fclose(f);
         putchar('\n');
     }
     printf("count=%u\n", (unsigned)gw_web_assets_count);
@@ -103,7 +112,8 @@ def compile_reader(tmp_path: Path, table_c: Path) -> list:
     reader = tmp_path / 'reader.c'
     reader.write_text(READER_C)
     exe = tmp_path / 'reader'
-    cc([*STRICT, *INCLUDE_FLAGS, str(reader), str(table_c), '-o', str(exe)])
+    cc([*STRICT, *INCLUDE_FLAGS, f'-DWEB_FS_ROOT="{table_c.parent / "webfs"}"',
+        str(reader), str(table_c), '-o', str(exe)])
     out = subprocess.run([str(exe)], capture_output=True, text=True)
     assert out.returncode == 0, out.stdout + out.stderr
     lines = out.stdout.splitlines()
@@ -255,9 +265,11 @@ def test_budget_gate(tmp_path):
     big = os.urandom(70 * 1024)                                             # incompressible
     m = make_dist(tmp_path / 'dist', {'index.html.gz': gz(big)}, {'files': [{'path': '/'}]})
     out = tmp_path / 'big.c'
-    r = generate(m, out)
+    r = generate(m, out, '--budget', str(64 * 1024))
     assert r.returncode == 1 and 'budget' in r.stderr and not out.exists()
-    assert generate(m, out, '--budget', str(200 * 1024)).returncode == 0
+    assert generate(m, out).returncode == 0
+    assert (tmp_path / 'webfs' / 'index.html.gz').read_bytes() == gz(big)
+    assert 'static const uint8_t' not in out.read_text()
 
 
 @pytest.mark.parametrize('mutate, needle', [
@@ -352,6 +364,7 @@ FAKE_WEB_CMAKE = r'''
 add_executable(reader reader.c)
 target_include_directories(reader PRIVATE include)
 target_compile_options(reader PRIVATE -Wall -Wextra -Werror)
+target_compile_definitions(reader PRIVATE WEB_FS_ROOT="${CMAKE_CURRENT_BINARY_DIR}/webfs")
 include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/gw_web_assets.cmake")
 gw_web_assets(reader)
 '''
@@ -444,11 +457,11 @@ def test_cmake_hook_builds_and_rebuilds_on_web_change(tmp_path):
 
 @needs_cmake
 @pytest.mark.skipif(not NODE, reason='node not available')
-def test_cmake_hook_fails_build_over_budget(tmp_path):
+def test_cmake_hook_warns_above_review_threshold(tmp_path):
     root = scratch_repo(tmp_path)
-    (root / 'web' / 'src' / 'main.js').write_text('//' + os.urandom(80 * 1024).hex() + '\n')
+    (root / 'web' / 'src' / 'main.js').write_text('//' + os.urandom(300 * 1024).hex() + '\n')
     _, bld = cmake_build(root)
-    assert bld.returncode != 0 and 'budget' in bld.stdout + bld.stderr
+    assert bld.returncode == 0 and 'review threshold' in bld.stdout + bld.stderr
 
 
 @needs_cmake
@@ -515,10 +528,11 @@ def test_real_web_build_manifest_is_consumable(tmp_path):
 
 
 @needs_web_build
-def test_real_web_build_within_budget(tmp_path):
-    """DESIGN §11: the gzip total must stay <= 64 KB, otherwise the firmware build (build mode of
-    cmake/gw_web_assets.cmake) fails. A failure here is in the web UI (stream D), not the tooling."""
+def test_real_web_build_stages_compressed_files(tmp_path):
+    """The production build succeeds and stages gzip bodies outside the metadata-only app table."""
     manifest, r = real_web_build(tmp_path)
     assert r.returncode == 0, r.stderr
     g = generate(manifest, tmp_path / 'web_assets.c')
     assert g.returncode == 0, g.stderr
+    assert (tmp_path / 'webfs' / 'index.html.gz').is_file()
+    assert 'static const uint8_t' not in (tmp_path / 'web_assets.c').read_text()

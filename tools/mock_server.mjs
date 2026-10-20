@@ -1119,7 +1119,7 @@ function route(m, p, role, opts, h) {
   const re = new RegExp(`^${p.replace(/\{(\w+)\}/g, (_, n) => { names.push(n); return '([^/]+)'; })}$`);
   R.push({ m, re, names, role, csrf: m !== 'GET' && opts.csrf !== false, body: opts.body || (m === 'GET' ? 'none' : 'none'), req: opts.req, h, p });
 }
-const LIMITS = { none: 0, json: 8192, import: 32768, firmware: 3 * 1024 * 1024 };
+const LIMITS = { none: 0, json: 8192, import: 32768, firmware: 3 * 1024 * 1024 + 80 };
 
 function devOf(params) {
   const id = Number(params.d);
@@ -1454,8 +1454,14 @@ route('POST', '/system/firmware', 'admin', { body: 'firmware' }, (ctx) => {
   const sha = String(ctx.req.headers['x-firmware-sha256'] || '').toLowerCase();
   if (!/^[0-9a-f]{64}$/.test(sha)) throw E(400, 'bad_request', 'X-Firmware-SHA256 header required');
   if (fw.uploading) throw E(423, 'locked', 'upload in progress');
-  const img = ctx.raw;
-  if (createHash('sha256').update(img).digest('hex') !== sha) { audit('ota_upload', ctx.u.name, { code: 1 }); throw E(422, 'hash_mismatch', 'SHA-256 mismatch'); }
+  const packet = ctx.raw;
+  if (createHash('sha256').update(packet).digest('hex') !== sha) { audit('ota_upload', ctx.u.name, { code: 1 }); throw E(422, 'hash_mismatch', 'SHA-256 mismatch'); }
+  if (packet.length < 80 || packet.subarray(0, 8).toString() !== 'GWOTA1\r\n') throw E(422, 'image_invalid', 'upload a .gwota package');
+  const appLen = packet.readUInt32LE(8), webLen = packet.readUInt32LE(12);
+  if (appLen < 288 || appLen > 0x280000 || webLen !== 0x80000 || packet.length !== 80 + appLen + webLen) throw E(422, 'image_invalid', 'invalid package lengths');
+  const img = packet.subarray(80, 80 + appLen), web = packet.subarray(80 + appLen);
+  if (!createHash('sha256').update(img).digest().equals(packet.subarray(16, 48)) ||
+      !createHash('sha256').update(web).digest().equals(packet.subarray(48, 80))) throw E(422, 'hash_mismatch', 'component SHA-256 mismatch');
   // ESP image: magic 0xE9; esp_app_desc_t at 32: magic 0xABCD5432, version[32] at +16, project_name[32] at +48.
   const cstr = (o) => { const s = img.subarray(o, o + 32); const z = s.indexOf(0); return s.subarray(0, z < 0 ? 32 : z).toString('latin1'); };
   if (img.length < 288 || img[0] !== 0xe9 || img.readUInt32LE(32) !== 0xabcd5432) throw E(422, 'image_invalid', 'not an ESP application image');

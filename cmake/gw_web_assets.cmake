@@ -7,7 +7,7 @@
 #      custom command (node tools/build_web.mjs -> web/dist, then tools/gen_web_assets.py) that
 #      DEPENDS on every file below web/ (except dist/, test/, node_modules/), the build script,
 #      package*.json and the generator, so editing the UI rebuilds the table. The build FAILS when
-#      the UI build fails or its gzip total exceeds 64 KB (both scripts check).
+#      the UI build fails. Gzip above 256 KiB warns; the LittleFS image enforces actual capacity.
 #   2. otherwise, a prebuilt web/dist/manifest.json exists: the table is generated from it (warning).
 #   3. otherwise (or -DGW_WEB_ASSETS=OFF): components/web/fallback/web_assets_fallback.c, the empty
 #      table, with a warning: the firmware then serves the API and /ws but no UI.
@@ -118,6 +118,9 @@ function(gw_web_assets target)
   set(self "${CMAKE_CURRENT_FUNCTION_LIST_FILE}")
   set(fallback "${gw_root}/components/web/fallback/web_assets_fallback.c")
   set(out "${CMAKE_CURRENT_BINARY_DIR}/web_assets.c")
+  set(GW_WEB_ASSET_TABLE "${out}" CACHE INTERNAL "Web metadata table" FORCE)
+  set(GW_WEB_FS_DIR "${CMAKE_CURRENT_BINARY_DIR}/webfs" CACHE INTERNAL "Web LittleFS source" FORCE)
+  set(GW_WEB_FS_READY FALSE CACHE INTERNAL "Web filesystem inputs available" FORCE)
   set(manifest "${gw_root}/web/dist/manifest.json")
   idf_build_get_property(python PYTHON)
   set(lock "${gw_root}/web/.dist.lock")
@@ -151,10 +154,12 @@ function(gw_web_assets target)
   endif()
 
   if(mode STREQUAL "build")
+    set(GW_WEB_FS_READY TRUE CACHE INTERNAL "Web filesystem inputs available" FORCE)
     _gw_web_inputs("${gw_root}" inputs)
     message(STATUS "gw_web_assets: web UI built with ${node} (${CMAKE_CURRENT_BINARY_DIR}/web_assets.c)")
     add_custom_command(
       OUTPUT "${out}"
+      BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/webfs/.asset-id"
       COMMAND "${CMAKE_COMMAND}" -DGW_WEB_SCRIPT=1 "-DGW_ROOT=${gw_root}" "-DGW_NODE=${node}"
               "-DGW_PYTHON=${python}" "-DGW_OUT=${out}" "-DGW_LOCK=${lock}" -P "${self}"
       DEPENDS ${inputs} "${gw_root}/tools/gen_web_assets.py" "${self}"
@@ -163,6 +168,7 @@ function(gw_web_assets target)
       VERBATIM)
     target_sources(${target} PRIVATE "${out}")
   elseif(mode STREQUAL "dist")
+    set(GW_WEB_FS_READY TRUE CACHE INTERNAL "Web filesystem inputs available" FORCE)
     file(GLOB_RECURSE dist_files CONFIGURE_DEPENDS LIST_DIRECTORIES false "${gw_root}/web/dist/*")
     list(SORT dist_files)
     message(WARNING "gw_web_assets: ${why}; embedding the prebuilt ${manifest} (not rebuilt from web/)")
@@ -170,6 +176,7 @@ function(gw_web_assets target)
       OUTPUT "${out}"
       COMMAND "${CMAKE_COMMAND}" -DGW_WEB_SCRIPT=1 "-DGW_ROOT=${gw_root}"
               "-DGW_PYTHON=${python}" "-DGW_OUT=${out}" "-DGW_LOCK=${lock}" -P "${self}"
+      BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/webfs/.asset-id"
       DEPENDS ${dist_files} "${gw_root}/tools/gen_web_assets.py" "${self}"
       WORKING_DIRECTORY "${gw_root}"
       COMMENT "Generating web_assets.c from the prebuilt web/dist"
@@ -180,4 +187,36 @@ function(gw_web_assets target)
                     "table (the firmware serves the API and /ws but no UI)")
     target_sources(${target} PRIVATE "${fallback}")
   endif()
+endfunction()
+
+# Called after project(), when partition registration and the application binary target exist.
+function(gw_web_images)
+  if(NOT GW_WEB_ASSETS)
+    return()
+  endif()
+  if(NOT GW_WEB_FS_READY)
+    message(FATAL_ERROR "Web UI enabled but no build tools or prebuilt web/dist are available. Run npm ci or use -DGW_WEB_ASSETS=OFF.")
+  endif()
+  partition_table_get_partition_info(web_size "--partition-name web_0" "size")
+  partition_table_get_partition_info(web_other_size "--partition-name web_1" "size")
+  if(NOT web_size EQUAL 524288 OR NOT web_other_size EQUAL web_size)
+    message(FATAL_ERROR "web_0 and web_1 must both be 512 KiB")
+  endif()
+  idf_build_get_property(python PYTHON)
+  set(image "${CMAKE_BINARY_DIR}/web.bin")
+  add_custom_command(OUTPUT "${image}"
+    COMMAND "${python}" "${CMAKE_SOURCE_DIR}/tools/build_web_fs.py"
+            --source "${GW_WEB_FS_DIR}" --out "${image}" --size "${web_size}"
+    DEPENDS "${GW_WEB_ASSET_TABLE}" "${GW_WEB_FS_DIR}/.asset-id" "${CMAKE_SOURCE_DIR}/tools/build_web_fs.py"
+    VERBATIM)
+  add_custom_target(gw_web_fs ALL DEPENDS "${image}")
+  foreach(part web_0 web_1)
+    esp_partition_register_target(${part} "${image}" FLASH_IN_PROJECT DEPENDS gw_web_fs)
+  endforeach()
+  add_custom_target(gw_ota_package ALL
+    COMMAND "${python}" "${CMAKE_SOURCE_DIR}/tools/package_ota.py"
+            --app "${CMAKE_BINARY_DIR}/${CMAKE_PROJECT_NAME}.bin" --web "${image}"
+            --out "${CMAKE_BINARY_DIR}/${CMAKE_PROJECT_NAME}.gwota"
+    DEPENDS gen_project_binary gw_web_fs "${CMAKE_SOURCE_DIR}/tools/package_ota.py"
+    VERBATIM)
 endfunction()

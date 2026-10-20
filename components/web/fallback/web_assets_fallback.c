@@ -4,3 +4,4 @@
 
 const web_asset_t gw_web_assets[] = {{NULL, NULL, NULL, NULL, 0, false}};
 const size_t gw_web_assets_count = 0;
+const char gw_web_assets_id[] = "";

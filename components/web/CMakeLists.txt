@@ -3,7 +3,7 @@ idf_component_register(
   SRC_DIRS "."
   INCLUDE_DIRS "include"
   REQUIRES gw_core auth esp_http_server
-  PRIV_REQUIRES store mex150 alarm net sysmgr snmp_gw cjson mbedtls app_update esp_app_format esp_partition espcoredump esp_timer lwip
+  PRIV_REQUIRES store mex150 alarm net sysmgr snmp_gw cjson mbedtls app_update esp_app_format esp_partition espcoredump esp_timer lwip littlefs
 )
 target_compile_options(${COMPONENT_LIB} PRIVATE
   -Wall -Wextra -Werror=implicit-function-declaration -Wframe-larger-than=2048)

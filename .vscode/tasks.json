@@ -20,7 +20,7 @@
       "type": "shell",
       "command": "uv run --locked pytest -q",
       "group": { "kind": "test", "isDefault": true },
-      "options": { "env": { "PATH": "/home/hajun/.nvm/versions/node/v24.14.0/bin:${env:PATH}" } },
+      "options": { "env": { "PATH": "/home/hajun/.nvm/versions/node/v24.15.0/bin:${env:PATH}" } },
       "problemMatcher": []
     },
     {
@@ -28,14 +28,14 @@
       "type": "shell",
       "command": "uv run --locked pytest -q tests/test_api_contract.py",
       "group": "test",
-      "options": { "env": { "PATH": "/home/hajun/.nvm/versions/node/v24.14.0/bin:${env:PATH}" } },
+      "options": { "env": { "PATH": "/home/hajun/.nvm/versions/node/v24.15.0/bin:${env:PATH}" } },
       "problemMatcher": []
     },
     {
       "label": "GW: web build",
       "type": "shell",
       "command": "npm run build:web",
-      "options": { "env": { "PATH": "/home/hajun/.nvm/versions/node/v24.14.0/bin:${env:PATH}" } },
+      "options": { "env": { "PATH": "/home/hajun/.nvm/versions/node/v24.15.0/bin:${env:PATH}" } },
       "problemMatcher": []
     },
     {
@@ -43,7 +43,7 @@
       "type": "shell",
       "command": "npm test",
       "group": "test",
-      "options": { "env": { "PATH": "/home/hajun/.nvm/versions/node/v24.14.0/bin:${env:PATH}" } },
+      "options": { "env": { "PATH": "/home/hajun/.nvm/versions/node/v24.15.0/bin:${env:PATH}" } },
       "problemMatcher": []
     },
     {
@@ -51,7 +51,7 @@
       "type": "shell",
       "command": "npm run mock",
       "isBackground": true,
-      "options": { "env": { "PATH": "/home/hajun/.nvm/versions/node/v24.14.0/bin:${env:PATH}" } },
+      "options": { "env": { "PATH": "/home/hajun/.nvm/versions/node/v24.15.0/bin:${env:PATH}" } },
       "problemMatcher": []
     },
     {

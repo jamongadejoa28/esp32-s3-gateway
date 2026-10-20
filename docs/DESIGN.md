@@ -106,12 +106,14 @@ Every component: own `CMakeLists.txt` with explicit `REQUIRES`/`PRIV_REQUIRES`, 
 nvs,       data, nvs,      0x9000,    0x6000
 otadata,   data, ota,      0xF000,    0x2000
 phy_init,  data, phy,      0x11000,   0x1000
-ota_0,     app,  ota_0,    0x20000,   0x300000
-ota_1,     app,  ota_1,    0x320000,  0x300000
+ota_0,     app,  ota_0,    0x20000,   0x280000
+web_0,     data, littlefs, 0x2A0000,  0x80000
+ota_1,     app,  ota_1,    0x320000,  0x280000
+web_1,     data, littlefs, 0x5A0000,  0x80000
 data,      data, littlefs, 0x620000,  0x9D0000
 coredump,  data, coredump, 0xFF0000,  0x10000
 ```
-Static UI = gzipped C arrays inside the app image (UI + firmware update/rollback atomically). LittleFS `data` holds config, secrets, history, logs.
+Static UI = gzip files in read-only LittleFS `web_0`/`web_1`, paired with app `ota_0`/`ota_1`. Only asset metadata is compiled into the app. `.gwota` updates and rolls back the app/web pair together. LittleFS `data` still holds config, secrets, history, logs at its original offset and size.
 
 ## 4. sdkconfig.defaults (baseline; adjust only if a symbol does not exist in 6.1 — verify with `grep -r "config NAME" $IDF_PATH/components`)
 ```
@@ -238,7 +240,7 @@ Factory reset: web (admin, password re-entry + type `RESET`, option keep network
 - No path-taking file endpoints; no CORS headers; headers on every response: CSP `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY`; `Cache-Control: no-store` on `/api`. No `Server` header. No device data unauthenticated: no model, firmware/IDF version, build, MAC, hostname or site in any unauthenticated response; the static UI bundle is code only (generic strings, the MESTIO brand on the login page) and contains no device-specific values (hw_smoke leak check).
 - Unauthenticated surface (complete): `GET /`, hashed static assets, `GET /favicon.svg`, `POST /api/v1/auth/login`, `GET /api/v1/session` (401 `{}` if not logged in).
 - Router default-deny: every route declares `{method, path pattern, min_role, csrf, max_body}`; unlisted → 404.
-- Body limits: JSON 8 KB, config import 32 KB, OTA 3 MB (partition size).
+- Body limits: JSON 8 KB, config import 32 KB, OTA package 3 MiB + 80 bytes (2.5 MiB app + 512 KiB web + header).
 - IP allowlist (≤8 CIDRs) in httpd `open_fn` and SNMP transport; recovery AP clients exempt — "from the AP" = local address 192.168.150.1 AND peer in 192.168.150.0/24, plus a strong-host `LWIP_HOOK_IP4_INPUT` that drops packets for the AP address arriving on another netif (lwIP accepts any own address on any interface).
 - Secrets in `/data/sec/secrets.json`; never returned (write-only fields read back as `"…_set": true`); excluded from export. The core dump is served only as a summary (task, PC, backtrace) because the ELF contains RAM.
 - Firmware images are not signed (accepted risk, §14): integrity (SHA-256), project name and version are checked; authenticity relies on the admin session.
@@ -371,7 +373,7 @@ Base OIDs built at init from PEN. `snmp_set_device_enterprise_oid()` = `…PEN.1
 - `tools/gen_mib.py` generates SMIv2 `MESTIO-GW-MIB` from `regmap.def`, `alarm_catalog.def`, PEN from sdkconfig; embedded gz, served at `/api/v1/snmp/mib`; `tests/test_mib.py` compiles it with pysmi.
 
 ## 11. Front-end
-Build: `tools/build_web.mjs` (esbuild exact pin) bundles `web/src/main.js` → ES2020 minified + CSS bundle; HTML whitespace collapsed; SVG logo/sprite minified (strip `<title>/<desc>`); content-hashed names; gzip -9; `manifest.json` + size report; **fail if total gz > 64 KB**. `tools/gen_web_assets.py` → `build/…/web_assets.c` `{path,mime,etag,data,len}` all gz; CMake custom command re-runs on `web/**` change; `tools/idf.py` puts nvm node bin on PATH. Hashed files `Cache-Control: public, max-age=31536000, immutable`; `index.html` `no-cache` + ETag/304.
+Build: `tools/build_web.mjs` (esbuild exact pin) bundles `web/src/main.js` → ES2020 minified + CSS bundle; HTML whitespace collapsed; SVG logo/sprite minified (strip `<title>/<desc>`); content-hashed names; gzip -9; `manifest.json` + size report; **warn if total gz > 256 KiB**. `tools/gen_web_assets.py` stages validated gzip files and emits only `{path,mime,etag,file,len,immutable}` metadata plus an asset identity. `tools/build_web_fs.py` creates and verifies a 512 KiB LittleFS image; filesystem capacity is the hard limit. `tools/package_ota.py` bundles the matching app and filesystem into `.gwota`. Runtime uses a 1 KiB file buffer, not an in-memory copy of all assets; CMake custom command re-runs on `web/**` change; `tools/idf.py` puts nvm node bin on PATH. Hashed files `Cache-Control: public, max-age=31536000, immutable`; `index.html` `no-cache` + ETag/304.
 
 Visual system (industrial HMI, professional, NOT generic-AI):
 - Type: system stack, no webfonts: `-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", Roboto, sans-serif`; numbers `font-variant-numeric: tabular-nums`; scale 12/13/14 base/16/20/28/40 (KPI). Sentence case, left-aligned.

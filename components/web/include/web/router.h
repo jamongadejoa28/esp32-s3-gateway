@@ -52,7 +52,7 @@ struct cJSON;
 #define WEB_QUERY_SZ 256
 #define WEB_BODY_JSON_MAX (8u * 1024u)
 #define WEB_BODY_IMPORT_MAX (32u * 1024u)
-#define WEB_BODY_OTA_MAX (3u * 1024u * 1024u) /* == ota partition size */
+#define WEB_BODY_OTA_MAX (3u * 1024u * 1024u + 80u) /* app + paired LittleFS + GWOTA1 header */
 #define WEB_MAX_ROUTE_TABLES 16
 #define WEB_CSRF_HEADER "X-CSRF-Token"
 

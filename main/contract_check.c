@@ -50,6 +50,7 @@
 #include "net/net.h"
 /* web */
 #include "web/router.h"
+#include "web/ota_package.h"
 #include "web/web.h"
 #include "web/web_assets.h"
 #include "web/web_path.h"
@@ -154,7 +155,8 @@ static_assert(BOARD_BTN_RESET_DISARMED > BOARD_BTN_RELEASED_RESET, "button event
 static_assert(NET_APPLY_DELAY_S <= 60 && NET_CONFIRM_S >= 10 && NET_CONFIRM_S <= 3600, "net_prov limits");
 
 /* Integrator (Phase 2) */
-static_assert(MEX_REASON_NAME_SZ >= sizeof("running_interlock") && MEX_REASON_NAME_SZ >= sizeof("exception:255"),
+static_assert(MEX_REASON_NAME_SZ >= sizeof("running_interlock") &&
+                  MEX_REASON_NAME_SZ >= sizeof("exception:255"),
               "mex_reason_name buffer must hold every wire name");
 static_assert(sizeof(GW_NVS_NS_BOOTS) <= 16 && sizeof(GW_NVS_KEY_BOOTS) <= 16, "NVS names <= 15 chars");
 static_assert(SYS_INIT_FAULT_CORE == 0x80u, "init fault bits are wire values (diag.init_faults)");

@@ -15,7 +15,7 @@ test('build output: manifest, hashed assets, gzip, budget', async () => {
     const r = await build({ out, quiet: true });
     assert.ok(r.ok, `gzip total ${r.totalGz} exceeds ${BUDGET_GZ}`);
     const man = JSON.parse(readFileSync(join(out, 'manifest.json'), 'utf8'));
-    assert.equal(man.budget_gz, 65536);
+    assert.equal(man.budget_gz, 256 * 1024);
     assert.ok(man.total_gz <= man.budget_gz);
     const paths = man.assets.map((a) => a.path);
     assert.deepEqual([...paths].sort(), paths, 'sorted by path');

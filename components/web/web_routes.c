@@ -23,7 +23,7 @@
 #define B_NONE 0u
 #define B_JSON (8u * 1024u)
 #define B_IMPORT (32u * 1024u)
-#define B_OTA (3u * 1024u * 1024u)
+#define B_OTA (3u * 1024u * 1024u + 80u)
 
 const web_route_meta_t web_route_meta[] = {
 #define ROUTE(m, pat, role, flags, body, h) {m, pat, role, (uint8_t)(flags), body, #h},

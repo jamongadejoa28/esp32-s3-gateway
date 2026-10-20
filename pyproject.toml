@@ -28,6 +28,7 @@ dev = [
     "idf-component-manager>=2.2",
     "idf-drivers-gdb>=0.1.1",
     "jsonschema>=4.23",
+    "littlefs-python==0.19.0",
     "ninja>=1.13.2",
     "packaging>=26.3",
     "psutil>=7.0.0",

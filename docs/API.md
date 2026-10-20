@@ -12,7 +12,7 @@ its schema and is validated by the contract tests.
 |---|---|
 | Base path | `/api/v1`. All paths below are relative to it except `/ws`. |
 | Encoding | Request and response bodies are UTF-8 JSON (`Content-Type: application/json`) unless stated. A non-empty body with another content type → 400 `bad_request`. |
-| Body limits | JSON 8 KB, config import 32 KB, firmware 3 MB (partition size). Larger → 413 `payload_too_large`. Routes without a body reject any body with 413. |
+| Body limits | JSON 8 KB, config import 32 KB, firmware package 3 MiB + 80 bytes (2.5 MiB app + 512 KiB web + header). Larger → 413 `payload_too_large`. Routes without a body reject any body with 413. |
 | Time | Timestamps are Unix epoch **milliseconds UTC** (`ts`, `since`, `*_ms`). `null` when the gateway's wall clock was not valid at that moment. Durations are seconds (`*_s`). |
 | Numbers | Register *values* are decimal numbers at display scale (`23.5`). *Raw* integers (register scale, e.g. `235`) appear only in members named `raw`, `regs`, `r`, `requested`, history channels and alarm `value`. Every raw that is **read** (live `regs`, WS `snap.r`, write-result/command/WS `write` `raw`) is the decoded register word: sign-extended for signed registers (40021, 40022, 40036), the full 16-bit word for bitfield registers and 40005 (bit 0 run, bits 15..8 delay seconds). A raw that is **written** (`{"raw"}` body, command `requested`) is the same except for 40005, where it is the run bit 0/1 (`/meta/registers` `min`/`max`); writing back a read 40005 word such as 2561 is `rejected`/`range`. |
 | Strings | Length limits on UTF-8 strings are in **bytes** (device/rule names 23, texts 63, passwords at most 64), except the password minimum (10 characters). Schema `maxLength` (characters) is only an upper bound; the UI checks bytes. |
@@ -689,8 +689,16 @@ cannot delete itself or change its own role). PBKDF2 makes create/password updat
 ```
 
 **POST /system/firmware** (admin, CSRF) — `Content-Type: application/octet-stream`, `Content-Length`
-required (≤ 3 MB), header `X-Firmware-SHA256: <64 hex>` (computed by the browser). Optional
-`?allow_downgrade=1`. The image is hashed while written; on success the boot slot is switched and
+required (≤ 3 MiB + 80 bytes), header `X-Firmware-SHA256: <64 hex>` (computed by the browser). Optional
+`?allow_downgrade=1`. Upload `build/mestio_gw.gwota`; standalone `.bin` files are rejected.
+The package contains an 80-byte header (`GWOTA1\r\n`, little-endian u32 app length and web length,
+32-byte app SHA-256 and 32-byte web SHA-256), then the app and a complete 512 KiB LittleFS image.
+`X-Firmware-SHA256` covers the entire package. The inactive app/web pair is written using bounded
+buffers. Web flash readback, LittleFS mount and matching asset identity in the new application are
+verified before `sys_ota_end` validates the app and selects its boot slot. An interrupted/rejected
+upload leaves the running pair untouched; rollback selects the previous app and web pair.
+Initial migration from the embedded-asset layout requires a USB flash of the new partition table.
+The package is hashed while written; on success the boot slot is switched and
 the device reboots after 2 s into `pending_verify`; the supervisor marks it valid after 60 s of
 healthy operation, otherwise the bootloader rolls back. Errors: 400 (missing header/length), 413,
 422 `hash_mismatch`, 422 `image_invalid` (not a `mestio_gw` image, corrupt, or downgrade without

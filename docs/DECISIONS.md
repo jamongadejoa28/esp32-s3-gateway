@@ -415,3 +415,21 @@
 - **FINAL VERIFIER: HW_TEST.md** gained every hardware-only item from the fixer reports (AP stop/start heap return, stalled WS client, boot watchdog, mark-valid blocked by init faults, spoofed 127.0.0.1 SNMP, log debounce, rollup query latency/PSRAM use, WS2812 with RMT out of IRAM, `poll_ms` > 3000 strip, mitigation-0 fallback for the heap gate) in their sections and in the §13 table. README.md (Korean) added.
 - **FINAL VERIFIER: not applied** — ARCHITECTURE §6.2 mitigation 0 (PSRAM stacks for snmp_agent/httpd_login/mex_poll) stays a hardware-conditional fallback: it changes latency and DMA assumptions that only the §5 gate on hardware can justify.
 - **FINAL VERIFIER: verification (no serial device touched).** `rm -rf build` + `uv run --locked python tools/idf.py build` → OK, no compiler warnings (only IDF's own CMake component-validation notices about esp_wifi/wpa_supplicant private include dirs); image 1 425 984 B (45 % of the 3 MB OTA slot), DIRAM 129 438 / 341 760 B (.text 72 923, .bss 32 176, .data 24 339), external .bss 35 076 B, IRAM 16 384/16 384. pytest 1236 passed; npm test 65/65; web gzip 64 917 / 65 536 B; hw_smoke `--write --ota-write` against a fresh mock 127/0/0; headless Chromium screenshots: no page errors, 390 px pages scrollWidth 390, cold load 14 requests.
+
+
+## 2026-10-19: web assets in paired LittleFS
+
+Supersedes the historical embedded-body contract and hard 64 KiB web budget above. The user
+requested LittleFS storage. Keep persistent `data` at 0x620000 / 0x9D0000; split each former
+3 MiB app region into a 2.5 MiB app and a 512 KiB web filesystem. Mount only the running app's
+web partition, read-only, without formatting on failure. Stream gzip bodies in 1 KiB chunks;
+retain the existing cache/security headers and browser-side UI. Node.js remains a host build tool.
+
+Generate a metadata-only table and `.asset-id` alongside staged gzip files. A 256 KiB gzip total
+warns for review; actual LittleFS image construction enforces capacity including filesystem overhead.
+The locked littlefs-python tool builds and reads back the image. Normal serial flash includes
+both web partitions but never images the persistent data partition. `.gwota` contains app+web,
+with length limits and component/package SHA-256 checks. Write only the inactive pair, validate
+web readback and mount plus its identity in the new app, then let sysmgr validate/commit the app.
+This preserves the previous web files across interrupted updates and app rollback. First migration
+requires serial flashing the changed partition table. No hardware was flashed during implementation.

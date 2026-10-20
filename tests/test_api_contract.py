@@ -309,7 +309,11 @@ def esp_image(version: str, project: str = 'mestio_gw', size: int = 4096) -> byt
     img[32:36] = (0xABCD5432).to_bytes(4, 'little')
     img[48:48 + len(version)] = version.encode()
     img[80:80 + len(project)] = project.encode()
-    return bytes(img)
+    import hashlib
+    import struct
+    web = bytes(0x80000)
+    return struct.pack('<8sII32s32s', b'GWOTA1\r\n', len(img), len(web),
+                       hashlib.sha256(img).digest(), hashlib.sha256(web).digest()) + img + web
 
 
 def upload(c, img, query=''):

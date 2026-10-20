@@ -493,7 +493,12 @@ test('firmware upload: hash mismatch, invalid image, success → reboot', async 
   img.writeUInt32LE(0xabcd5432, 32);
   img.write('9.9.9', 48, 'latin1');
   img.write('mestio_gw', 80, 'latin1');
-  const ok = await A.req('POST', '/system/firmware', { raw: img, headers: { 'X-Firmware-SHA256': sha(img) } });
+  const web = Buffer.alloc(0x80000), header = Buffer.alloc(80);
+  header.write('GWOTA1\r\n'); header.writeUInt32LE(img.length, 8); header.writeUInt32LE(web.length, 12);
+  createHash('sha256').update(img).digest().copy(header, 16);
+  createHash('sha256').update(web).digest().copy(header, 48);
+  const packet = Buffer.concat([header, img, web]);
+  const ok = await A.req('POST', '/system/firmware', { raw: packet, headers: { 'X-Firmware-SHA256': sha(packet) } });
   assert.equal(ok.status, 200, ok.text);
   valid('firmware-upload.response', ok.json);
   assert.equal(ok.json.version, '9.9.9');
