@@ -161,7 +161,8 @@ const sgw_dev_t *sgw_dev_by_index(uint32_t idx) {
     return idx == 1 ? &s_dev : NULL;
 }
 void sgw_last_write_put(const sgw_last_write_t *w) {
-    event("LASTWRITE state=%u addr=%u raw=%ld by=%s", (unsigned)w->state, (unsigned)w->addr, (long)w->raw_req, w->by);
+    event("LASTWRITE state=%u addr=%u raw=%ld by=%s", (unsigned)w->state, (unsigned)w->addr, (long)w->raw_req,
+          w->by);
 }
 void sgw_last_write_put_pending(const sgw_last_write_t *w) {
     sgw_last_write_put(w);
@@ -222,6 +223,7 @@ bool mex_service_snapshot(uint8_t dev, mex_snapshot_t *out) {
     out->seq = 7;
     out->mono_ms = gw_time_mono_ms();
     out->slow_valid = true;
+    out->measurement_valid = true;
     return true;
 }
 
@@ -332,7 +334,8 @@ int main(int argc, char **argv) {
     gw_secure_zero(keys, sizeof(keys));
 
     if (snmp_registry_add(&sgw_mod_system) || snmp_registry_add(&sgw_mod_framework) ||
-        snmp_registry_add(&sgw_mod_usm) || snmp_registry_add(&sgw_mod_mex_setpoint) || snmp_registry_start()) {
+        snmp_registry_add(&sgw_mod_usm) || snmp_registry_add(&sgw_mod_mex_setpoint) ||
+        snmp_registry_start()) {
         fprintf(stderr, "registry failed\n");
         return 1;
     }
@@ -396,12 +399,15 @@ int main(int argc, char **argv) {
         }
         ip_addr_t src;
         ip_addr_set_ip4_u32_val(src, from.sin_addr.s_addr);
-        const u32_t before = snmp_stats.unknownusernames + snmp_stats.unsupportedseclevels + snmp_stats.wrongdigests;
+        const u32_t before =
+            snmp_stats.unknownusernames + snmp_stats.unsupportedseclevels + snmp_stats.wrongdigests;
         snmp_receive(&s_sock, p, &src, ntohs(from.sin_port));
         pbuf_free(p);
-        if (snmp_stats.unknownusernames + snmp_stats.unsupportedseclevels + snmp_stats.wrongdigests != before) {
-            event("USMSTATS unknown=%lu seclevel=%lu digest=%lu ctxuser=%s", (unsigned long)snmp_stats.unknownusernames,
-                  (unsigned long)snmp_stats.unsupportedseclevels, (unsigned long)snmp_stats.wrongdigests, s_ctx.user);
+        if (snmp_stats.unknownusernames + snmp_stats.unsupportedseclevels + snmp_stats.wrongdigests !=
+            before) {
+            event("USMSTATS unknown=%lu seclevel=%lu digest=%lu ctxuser=%s",
+                  (unsigned long)snmp_stats.unknownusernames, (unsigned long)snmp_stats.unsupportedseclevels,
+                  (unsigned long)snmp_stats.wrongdigests, s_ctx.user);
         }
     }
 }

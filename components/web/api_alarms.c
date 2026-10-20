@@ -266,3 +266,65 @@ esp_err_t h_alarms_history_csv(web_ctx_t *c) {
     }
     return web_stream_end(c, NULL);
 }
+
+esp_err_t h_alarms_history_delete(web_ctx_t *c) {
+    cJSON *root = web_body_object(c);
+    if (!root)
+        return ESP_OK;
+    static const char *const allowed[] = {"mode", "seq", "dev", "sev", "from", "to", NULL};
+    const char *mode = NULL;
+    int64_t seq = 0, dev = -1, sev = -1, from = 0, to = 0;
+    bool ok = web_json_only(c, root, allowed, NULL) && web_json_str(c, root, "mode", 5, &mode, NULL);
+    const bool one = ok && !strcmp(mode, "one");
+    const bool range = ok && !strcmp(mode, "range");
+    const bool all = ok && !strcmp(mode, "all");
+    if (ok && !one && !range && !all) {
+        web_send_validation(c, "mode", "range", "one, range or all");
+        ok = false;
+    }
+    if (ok && cJSON_GetObjectItemCaseSensitive(root, "dev"))
+        ok = web_json_int(c, root, "dev", 0, GW_MAX_DEVICES - 1, &dev, NULL);
+    if (ok && cJSON_GetObjectItemCaseSensitive(root, "sev"))
+        ok = web_json_int(c, root, "sev", 0, ALM_SEV_CRITICAL, &sev, NULL);
+    if (ok && one)
+        ok = web_json_int(c, root, "seq", 1, UINT32_MAX, &seq, NULL);
+    if (ok && range) {
+        ok = web_json_int(c, root, "from", 1, 4294967295000LL, &from, NULL) &&
+             web_json_int(c, root, "to", 1, 4294967295000LL, &to, NULL);
+        if (ok && from > to) {
+            web_send_validation(c, "to", "range", "to must be >= from");
+            ok = false;
+        }
+    }
+    if (ok && ((!one && cJSON_GetObjectItemCaseSensitive(root, "seq")) ||
+               (!range && (cJSON_GetObjectItemCaseSensitive(root, "from") ||
+                           cJSON_GetObjectItemCaseSensitive(root, "to"))))) {
+        web_send_validation(c, "mode", "format", "fields do not match deletion mode");
+        ok = false;
+    }
+    esp_err_t ret = ESP_OK;
+    if (ok) {
+        evlog_delete_t f = {.seq = (uint32_t)seq,
+                            .dev = (int16_t)dev,
+                            .min_sev = (int8_t)sev,
+                            .from_s = (uint32_t)((from + 999) / 1000),
+                            .to_s = (uint32_t)(to / 1000)};
+        uint32_t deleted = 0;
+        esp_err_t err = evlog_delete_alarms(&f, &deleted);
+        if (err != ESP_OK)
+            ret = web_send_esp_err(c, err);
+        else {
+            evlog_audit(AUD_HISTORY_DELETE, dev < 0 ? EVLOG_DEV_NONE : (uint16_t)dev, 1, 0, web_user(c),
+                        deleted);
+            char buf[48];
+            gw_jw_t w;
+            gw_jw_init_fixed(&w, buf, sizeof(buf));
+            gw_jw_obj_open(&w);
+            gw_jw_kuint(&w, "deleted", deleted);
+            gw_jw_obj_close(&w);
+            ret = web_send_jw(c, 200, &w);
+        }
+    }
+    cJSON_Delete(root);
+    return ret;
+}

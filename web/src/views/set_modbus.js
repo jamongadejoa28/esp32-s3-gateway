@@ -2,16 +2,15 @@
 import { h, icon, replace } from '../dom.js';
 import { t } from '../i18n/index.js';
 import { get, put, post } from '../api.js';
-import { state, emit } from '../store.js';
+import { state, updateDevices } from '../store.js';
 import { Form, panel, confirmDlg, toast, toastErr, table } from '../ui.js';
 import * as fmt from '../fmt.js';
-import { utf8Len } from '../fmt.js';
 
 export function mount(el, scope, { admin }) {
   const f = new Form({
     readOnly: !admin,
     onSave: (v) => put('/config/modbus', v),
-    onSaved: (m) => { state.pollMs = m.poll_ms; get('/devices').then((d) => { state.devices = d; emit('devices', d); }).catch(() => {}); },
+    onSaved: (m) => { state.pollMs = m.poll_ms; get('/devices').then(updateDevices).catch(() => {}); },
   });
   const baud = f.select('port.baud', t('mb.baud'), [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200].map((b) => [b, String(b)]));
   const parity = f.select('port.parity', t('mb.parity'), [['N', t('mb.none')], ['E', t('mb.even')], ['O', t('mb.odd')]]);
@@ -22,59 +21,10 @@ export function mount(el, scope, { admin }) {
   const gap = f.num('gap_ms', t('mb.gap'), { min: 0, max: 100, unit: 'ms' });
   const offline = f.num('offline_after', t('mb.offline'), { min: 1, max: 10, hint: t('mb.offline_hint') });
 
-  // devices editor
-  let devs = [];
-  const devBox = h('div');
-  const addBtn = h('button.btn.sm', { type: 'button', hidden: !admin }, icon('plus'), t('mb.add'));
-  const devErr = h('div.err', { hidden: true, role: 'alert' });
-  addBtn.addEventListener('click', () => {
-    const used = new Set(devs.map((d) => d.id));
-    const id = [0, 1, 2, 3].find((i) => !used.has(i));
-    if (id === undefined) return;
-    const slaves = new Set(devs.map((d) => d.slave));
-    let slave = 1;
-    while (slaves.has(slave)) slave++;
-    devs.push({ id, name: `${t('alarms.col.dev')} ${id + 1}`, slave, enabled: true });
-    paintDevs();
-    f.refresh();
-  });
-  function paintDevs() {
-    addBtn.disabled = devs.length >= 4;
-    replace(devBox, table([
-      { label: t('mb.dev_id'), cls: 'n', cell: (d) => String(d.id) },
-      { label: t('mb.dev_name'), cell: (d) => inp(d, 'name', 'text') },
-      { label: t('mb.slave'), cell: (d) => inp(d, 'slave', 'num') },
-      { label: t('mb.enabled'), cell: (d) => { const c = h('input.switch', { type: 'checkbox', role: 'switch', checked: d.enabled, disabled: !admin, 'aria-label': t('mb.enabled') }); c.addEventListener('change', () => { d.enabled = c.checked; f.refresh(); }); return c; } },
-      { label: '', cls: 'act', cell: (d) => (admin && devs.length > 1 ? h('button.btn.ghost.sm.icon', { type: 'button', 'aria-label': t('remove'), title: t('remove'), on: { click: () => { devs = devs.filter((x) => x !== d); paintDevs(); f.refresh(); } } }, icon('trash')) : null) },
-    ], devs, { caption: t('mb.devices') }));
-  }
-  function inp(d, k, kind) {
-    const i = h(`input.inp${kind === 'num' ? '.num' : ''}`, { type: 'text', value: String(d[k]), disabled: !admin, 'aria-label': t(k === 'name' ? 'mb.dev_name' : 'mb.slave'), inputmode: kind === 'num' ? 'numeric' : null });
-    i.addEventListener('input', () => { d[k] = kind === 'num' ? Number(i.value) : i.value; });
-    return i;
-  }
-  f.custom({
-    path: 'devices',
-    row: devBox,
-    get: () => devs.map((d) => ({ id: d.id, name: d.name.trim(), slave: d.slave, enabled: d.enabled })),
-    set: (v) => { devs = (v || []).map((d) => ({ ...d })); paintDevs(); },
-    err: devErr,
-    validate: (v) => {
-      const slaves = new Set();
-      for (const d of v) {
-        if (utf8Len(d.name) > 23) return t('v.bytes_x', { x: t('mb.dev_name'), n: 23 });
-        if (!Number.isInteger(d.slave) || d.slave < 1 || d.slave > 247) return t('v.slave');
-        if (d.enabled && slaves.has(d.slave)) return t('v.slave_dup');
-        if (d.enabled) slaves.add(d.slave);
-      }
-      return null;
-    },
-  });
 
   f.el.append(
     panel(t('mb.port'), h('div.panel-b', h('div.grid', baud.row, parity.row, stop.row))),
-    panel(t('mb.timing'), h('div.panel-b', h('div.grid', poll.row, tmo.row, retries.row, gap.row, offline.row))),
-    panel(t('mb.devices'), h('div', devBox, h('div.panel-b', devErr, addBtn))));
+    panel(t('mb.timing'), h('div.panel-b', h('div.grid', poll.row, tmo.row, retries.row, gap.row, offline.row))));
   if (admin) f.saveBar();
 
   // live counters

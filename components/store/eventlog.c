@@ -187,10 +187,10 @@ size_t evlog_query(evlog_kind_t kind, uint32_t before, size_t limit, const evlog
     if (!ram)
         return 0;
     evlog_state_t *l = &s_log[kind];
+    xSemaphoreTake(s_fmtx, portMAX_DELAY);
     portENTER_CRITICAL(&s_mux);
     size_t n_ram = s_frozen ? 0 : tail_copy_locked(l, ram, 0);
     portEXIT_CRITICAL(&s_mux);
-    xSemaphoreTake(s_fmtx, portMAX_DELAY);
     size_t n = evlog_core_query(s_frozen ? NULL : &l->files, ram, n_ram, before, limit, f, out, next);
     xSemaphoreGive(s_fmtx);
     free(ram);
@@ -343,4 +343,43 @@ esp_err_t eventlog_init(void) {
     }
     /* EVT_BOOT is appended by the sysmgr supervisor, EVT_HEALTH too (DECISIONS.md F). */
     return ESP_OK;
+}
+
+typedef struct {
+    evlog_delete_t filter;
+    uint32_t deleted;
+} delete_alarm_job_t;
+static esp_err_t delete_alarm_work(void *arg) {
+    delete_alarm_job_t *job = arg;
+    evlog_state_t *l = &s_log[EVLOG_EVENTS];
+    xSemaphoreTake(s_fmtx, portMAX_DELAY);
+    esp_err_t err = evlog_files_delete_alarms(&l->files, &job->filter, &job->deleted);
+    /* Even a partial filesystem failure must not resurrect removed records from the RAM tail. */
+    if (err == ESP_OK) {
+        portENTER_CRITICAL(&s_mux);
+        uint32_t n = 0;
+        const uint32_t first = (l->head + EVLOG_RAM_TAIL - l->count) % EVLOG_RAM_TAIL;
+        for (uint32_t i = 0; i < l->count; i++) {
+            evlog_rec_t r = l->tail[(first + i) % EVLOG_RAM_TAIL];
+            if (evlog_delete_match(&job->filter, &r)) {
+                if (r.seq > l->flushed_seq)
+                    job->deleted++;
+            } else
+                l->tail[(first + n++) % EVLOG_RAM_TAIL] = r;
+        }
+        l->count = n;
+        l->head = (first + n) % EVLOG_RAM_TAIL;
+        portEXIT_CRITICAL(&s_mux);
+    }
+    xSemaphoreGive(s_fmtx);
+    return err;
+}
+esp_err_t evlog_delete_alarms(const evlog_delete_t *filter, uint32_t *deleted) {
+    if (!s_ready || s_frozen || !filter || !deleted || gw_events_in_loop_task() || persist_in_task())
+        return ESP_ERR_INVALID_STATE;
+    delete_alarm_job_t job = {.filter = *filter};
+    job.filter.through_seq = evlog_last_seq(EVLOG_EVENTS);
+    esp_err_t err = persist_run(delete_alarm_work, &job, sizeof(job), 12000);
+    *deleted = job.deleted;
+    return err;
 }

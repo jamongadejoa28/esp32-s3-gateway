@@ -31,8 +31,9 @@ static const char *TAG = "mex150";
 #define MEX_TASK_PRIO 10
 #define MEX_TASK_STACK 4096
 #define MEX_TASK_CORE 1
-#define MEX_WAITERS (MEX_WRITE_QUEUE_LEN + 4) /* > queue: callers whose command was rejected still hold one briefly */
-#define MEX_EVT_POST_WAIT_MS 20               /* from API callers (httpd/snmp); the poll task posts with 0 */
+#define MEX_WAITERS                                                                                          \
+    (MEX_WRITE_QUEUE_LEN + 4)   /* > queue: callers whose command was rejected still hold one briefly */
+#define MEX_EVT_POST_WAIT_MS 20 /* from API callers (httpd/snmp); the poll task posts with 0 */
 
 static_assert(MEX_R_EXCEPTION(255) <= INT16_MAX, "every reason fits gw_evt_write_t.reason");
 static_assert(MEX_TXN_E_UART >= INT16_MIN, "transaction errors fit gw_evt_comm_t.last_err");
@@ -116,11 +117,20 @@ static void post(gw_event_id_t id, const void *data, size_t len) {
 
 static void io_on_snapshot(void *ctx, uint8_t dev, uint32_t seq, uint64_t mono_ms, bool slow_fresh) {
     (void)ctx;
+    static bool ready[GW_MAX_DEVICES]; /* last published readiness; poll task only */
+    mex_snapshot_t snap;
+    if (mex_core_snapshot(&s_core, dev, &snap) && (seq == 1 || ready[dev] != snap.measurement_valid)) {
+        ready[dev] = snap.measurement_valid;
+        ESP_LOGI(TAG, "dev%u measurements %s: temp_raw=%u hum_raw=%u", (unsigned)dev,
+                 snap.measurement_valid ? "ready" : "pending", (unsigned)snap.regs[36],
+                 (unsigned)snap.regs[37]);
+    }
     const gw_evt_snapshot_t ev = {.dev = dev, .slow_fresh = slow_fresh, .seq = seq, .mono_ms = mono_ms};
     post(GW_EVT_SNAPSHOT, &ev, sizeof ev);
 }
 
-static void io_on_comm(void *ctx, uint8_t dev, bool online, int last_err, uint32_t offline_count, int64_t ts_ms) {
+static void io_on_comm(void *ctx, uint8_t dev, bool online, int last_err, uint32_t offline_count,
+                       int64_t ts_ms) {
     (void)ctx;
     if (online)
         ESP_LOGI(TAG, "dev%u online", (unsigned)dev);

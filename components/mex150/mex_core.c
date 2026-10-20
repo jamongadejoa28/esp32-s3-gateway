@@ -47,10 +47,10 @@ size_t mex_core_sizeof(void) {
 /* Configuration                                                                                    */
 
 bool mex_core_port_valid(const mex_port_cfg_t *p) {
-    return p && p->baud >= 1200 && p->baud <= 115200 && (p->parity == 'N' || p->parity == 'E' || p->parity == 'O') &&
-           (p->stop == 1 || p->stop == 2) && p->poll_ms >= 200 && p->poll_ms <= 60000 && p->timeout_ms >= 50 &&
-           p->timeout_ms <= 2000 && p->gap_ms <= 100 && p->retries <= 3 && p->offline_after >= 1 &&
-           p->offline_after <= 10;
+    return p && p->baud >= 1200 && p->baud <= 115200 &&
+           (p->parity == 'N' || p->parity == 'E' || p->parity == 'O') && (p->stop == 1 || p->stop == 2) &&
+           p->poll_ms >= 200 && p->poll_ms <= 60000 && p->timeout_ms >= 50 && p->timeout_ms <= 2000 &&
+           p->gap_ms <= 100 && p->retries <= 3 && p->offline_after >= 1 && p->offline_after <= 10;
 }
 
 bool mex_core_cfg_valid(const mex_port_cfg_t *port, const mex_dev_cfg_t *devs, size_t n) {
@@ -58,8 +58,12 @@ bool mex_core_cfg_valid(const mex_port_cfg_t *port, const mex_dev_cfg_t *devs, s
         return false;
     for (size_t i = 0; i < n; i++) {
         const mex_dev_cfg_t *d = &devs[i];
-        if (d->id >= GW_MAX_DEVICES || d->slave < 1 || d->slave > 247 || !memchr(d->name, '\0', sizeof d->name))
+        if (d->id >= GW_MAX_DEVICES || d->slave < 1 || d->slave > 247 ||
+            !memchr(d->name, '\0', sizeof d->name))
             return false;
+        if (!memchr(d->template_id, 0, sizeof(d->template_id)) ||
+            (d->template_id[0] && strcmp(d->template_id, GW_DEFAULT_TEMPLATE_ID)))
+            return false; /* This driver only implements MEX150, even as the catalog grows. */
         for (size_t j = 0; j < i; j++) {
             if (devs[j].id == d->id)
                 return false;
@@ -180,11 +184,12 @@ static const mex_dev_cfg_t *cfg_find(const mex_dev_cfg_t *devs, size_t n, uint8_
     return NULL;
 }
 
-static bool apply_cfg(mex_core_t *c, const mex_port_cfg_t *port, const mex_dev_cfg_t *devs, size_t n, bool initial) {
+static bool apply_cfg(mex_core_t *c, const mex_port_cfg_t *port, const mex_dev_cfg_t *devs, size_t n,
+                      bool initial) {
     lock(c);
     const uint64_t t = mono(c);
-    const bool line = initial || c->port.baud != port->baud || c->port.parity != port->parity ||
-                      c->port.stop != port->stop;
+    const bool line =
+        initial || c->port.baud != port->baud || c->port.parity != port->parity || c->port.stop != port->stop;
     c->port = *port;
     for (uint8_t id = 0; id < GW_MAX_DEVICES; id++) {
         const mex_dev_cfg_t *nd = cfg_find(devs, n, id);
@@ -211,6 +216,7 @@ static bool apply_cfg(mex_core_t *c, const mex_port_cfg_t *port, const mex_dev_c
             }
             d->snap.online = false;
             d->snap.slow_valid = false;
+            d->snap.measurement_valid = false;
             d->comm = MEX_COMM_UNKNOWN; /* silently: no COMM event (gw_events.h) */
             d->fail_cycles = 0;
             d->last_err = 0;
@@ -219,6 +225,8 @@ static bool apply_cfg(mex_core_t *c, const mex_port_cfg_t *port, const mex_dev_c
             d->next_due_ms = t;
         }
         d->cfg = *nd;
+        if (line)
+            d->snap.measurement_valid = false;
         d->cfg.name[sizeof d->cfg.name - 1] = '\0';
     }
     unlock(c);
@@ -238,7 +246,8 @@ esp_err_t mex_core_configure(mex_core_t *c, const mex_port_cfg_t *port, const me
     return ESP_OK;
 }
 
-esp_err_t mex_core_reconfigure(mex_core_t *c, const mex_port_cfg_t *port, const mex_dev_cfg_t *devs, size_t n) {
+esp_err_t mex_core_reconfigure(mex_core_t *c, const mex_port_cfg_t *port, const mex_dev_cfg_t *devs,
+                               size_t n) {
     if (!c || !mex_core_cfg_valid(port, devs, n))
         return ESP_ERR_INVALID_ARG;
     lock(c);
@@ -441,7 +450,8 @@ static void exec_writes(mex_core_t *c, cycle_t *cy, size_t i, bool fast_done) {
 
         const mex_reg_t *r = mex_reg_find(addr);
         const uint16_t pdu = (uint16_t)(addr - MEX_ADDR_BASE - 1);
-        const int ack = txn(c, d, c->port.retries, cy->slave, MEX_FC_WRITE_SINGLE, pdu, mex_reg_encode(r, raw_req), NULL, 0);
+        const int ack = txn(c, d, c->port.retries, cy->slave, MEX_FC_WRITE_SINGLE, pdu,
+                            mex_reg_encode(r, raw_req), NULL, 0);
         uint16_t v = 0;
         const int rb = txn(c, d, c->port.retries, cy->slave, MEX_FC_READ_HOLDING, pdu, 1, &v, 1);
         mex_wstate_t st;
@@ -492,7 +502,8 @@ static void run_cycle(mex_core_t *c, uint8_t di) {
     unlock(c);
 
     bool probe = comm0 == MEX_COMM_OFFLINE;
-    const bool slow_due = comm0 != MEX_COMM_ONLINE || mex_plan_slow_due(start, d->last_slow_ms, d->write_since_slow);
+    const bool slow_due =
+        comm0 != MEX_COMM_ONLINE || mex_plan_slow_due(start, d->last_slow_ms, d->write_since_slow);
     cy.n = mex_plan_cycle(!probe, slow_due, cy.plan, MEX_CORE_PLAN_CAP);
     if (!probe && slow_due)
         cy.slow_at = cy.n - MEX_SLOW_BLOCKS;
@@ -535,6 +546,8 @@ static void run_cycle(mex_core_t *c, uint8_t di) {
         slow_fresh = cy.slow_at != NONE_IDX;
         cy.next.seq = d->snap.seq + 1 ? d->snap.seq + 1 : 1;
         cy.next.online = true;
+        cy.next.measurement_valid =
+            d->snap.measurement_valid || cy.next.regs[36] != 0 || cy.next.regs[37] != 0;
         cy.next.mono_ms = t;
         cy.next.wall_ms = w;
         cy.next.slow_valid = d->snap.slow_valid || slow_fresh;
@@ -555,6 +568,9 @@ static void run_cycle(mex_core_t *c, uint8_t di) {
             comm_evt = true;
         }
     } else {
+        /* A short reboot can recover before offline_after failures. Re-arm measurement readiness
+         * on any interrupted cycle so its startup zeros cannot inherit the old connection's flag. */
+        d->snap.measurement_valid = false;
         if (cy.last_write_at != NONE_IDX)
             d->write_since_slow = true;
         if (d->fail_cycles < UINT8_MAX)
@@ -564,6 +580,7 @@ static void run_cycle(mex_core_t *c, uint8_t di) {
             d->stats.offline_count++;
             d->snap.online = false;
             d->snap.slow_valid = false;
+            d->snap.measurement_valid = false;
             comm_evt = true;
         }
     }
@@ -577,7 +594,8 @@ static void run_cycle(mex_core_t *c, uint8_t di) {
         if (e->phase != MEX_WQ_SENT || e->dev != di)
             continue;
         /* gw_events.h: raw_after == raw_before when nothing was read back */
-        finalize(c, e, (mex_wstate_t)e->state, e->reason, e->raw_before, e->have_read ? e->raw_after : e->raw_before);
+        finalize(c, e, (mex_wstate_t)e->state, e->reason, e->raw_before,
+                 e->have_read ? e->raw_after : e->raw_before);
     }
     if (!ok)
         reject_queued(c, di, MEX_R_OFFLINE);

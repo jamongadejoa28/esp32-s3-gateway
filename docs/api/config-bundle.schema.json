@@ -133,6 +133,17 @@
               },
               "enabled": {
                 "type": "boolean"
+              },
+              "template_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 15
+              },
+              "display_mask": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4294967295,
+                "description": "Per-device display flags (bit = template channel ID). Does not disable polling, alarm detection or writes."
               }
             },
             "additionalProperties": false,

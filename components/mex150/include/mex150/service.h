@@ -24,6 +24,7 @@
 #include <stdint.h>
 
 #include "gw_core/gw_defs.h"
+#include "gw_core/device_templates.h"
 #include "gw_core/gw_err.h"
 #include "mex150/regmap.h"
 
@@ -59,7 +60,9 @@ typedef struct {
     uint8_t id;    /* 0..GW_MAX_DEVICES-1, unique */
     uint8_t slave; /* Modbus unit 1..247, unique among enabled devices */
     bool enabled;
-    char name[GW_DEV_NAME_SZ]; /* UTF-8 display name */
+    char name[GW_DEV_NAME_SZ];           /* UTF-8 display name */
+    char template_id[GW_TEMPLATE_ID_SZ]; /* empty legacy value means mex150 */
+    uint32_t display_mask; /* channel n displayed when bit n is set; collection/control unchanged */
 } mex_dev_cfg_t;
 
 /** Latest known device state. Copied out whole; never partially updated. */
@@ -71,6 +74,10 @@ typedef struct {
     uint32_t seq;                /* +1 per successful cycle, starts at 1; 0 = never polled */
     bool online;
     bool slow_valid; /* slow group (40027-30, 40053-54, 40059) read at least once since online */
+    /* Startup/reconnect 0/0 is ambiguous: wait for either measurement to leave zero once per
+     * connection. Thereafter zero (including 0/0) is valid. This is a gateway startup policy,
+     * not a measurement-ready bit supplied by the controller. */
+    bool measurement_valid;
 } mex_snapshot_t;
 
 typedef enum { MEX_W_PENDING = 0, MEX_W_APPLIED = 1, MEX_W_REJECTED = 2, MEX_W_UNCERTAIN = 3 } mex_wstate_t;

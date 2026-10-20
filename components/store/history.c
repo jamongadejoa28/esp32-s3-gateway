@@ -14,6 +14,7 @@
 #include "store/history.h"
 
 #include <string.h>
+#include <stdio.h>
 
 #include "esp_heap_caps.h"
 #include "esp_attr.h"
@@ -32,6 +33,8 @@ static const char *TAG = "history";
 
 static hist_dev_t *s_dev[GW_MAX_DEVICES];
 static SemaphoreHandle_t s_mtx;
+static SemaphoreHandle_t s_file_mtx; /* readers versus runtime deletion */
+static uint32_t s_clear_mask; /* under s_mtx */
 static bool s_ready;
 static volatile bool s_frozen; /* set once by history_factory_reset(), read by every task */
 static uint32_t s_retention_day; /* epoch day of the last retention pass */
@@ -68,7 +71,9 @@ static void h_unlock(void *arg) {
 static void h_files(void *base, uint8_t dev, uint32_t from_s, uint32_t to_s, hist_rec_cb_t cb, void *cb_arg) {
     if (s_frozen)
         return;
+    xSemaphoreTake(s_file_mtx, portMAX_DELAY);
     hist_files_iter(base, dev, from_s, to_s, cb, cb_arg);
+    xSemaphoreGive(s_file_mtx);
 }
 
 static void *psram_calloc(size_t n, size_t sz) {
@@ -116,7 +121,9 @@ static bool day_ensure(uint8_t dev, uint32_t day) {
         }
         hist_day_reset(nd, day);
         uint32_t n_rec = 0;
+        xSemaphoreTake(s_file_mtx, portMAX_DELAY);
         hist_files_iter((void *)FS_DIR_HIST, dev, day * 86400u, day * 86400u + 86400u, hist_day_add_cb, nd);
+        xSemaphoreGive(s_file_mtx);
         for (unsigned i = 0; i < HIST_COARSE_PER_DAY; i++)
             n_rec += nd->c[i].minutes;
         hist_day_t *old = NULL;
@@ -302,6 +309,9 @@ esp_err_t history_init(void) {
     s_mtx = xSemaphoreCreateMutex();
     if (!s_mtx)
         return ESP_ERR_NO_MEM;
+    s_file_mtx = xSemaphoreCreateMutex();
+    if (!s_file_mtx)
+        return ESP_ERR_NO_MEM;
     for (unsigned dev = 0; dev < GW_MAX_DEVICES; dev++)
         for (unsigned i = 0; i < HIST_DAY_SLOTS; i++)
             s_days[dev][i].day = HIST_DAY_NONE;
@@ -347,7 +357,7 @@ void history_sample(uint8_t dev, const mex_snapshot_t *s, bool fresh, bool any_a
     hist_fast_from_snapshot(s, fresh, any_alarm, ts_s, &f);
     uint64_t mono = gw_time_mono_ms();
     h_lock(NULL);
-    bool flush = hist_dev_sample(s_dev[dev], &f, mono);
+    bool flush = !(s_clear_mask & (1u << dev)) && hist_dev_sample(s_dev[dev], &f, mono);
     h_unlock(NULL);
     if (flush)
         persist_mark_dirty(PERSIST_HISTORY);
@@ -439,4 +449,27 @@ esp_err_t history_foreach_span(uint8_t dev, uint32_t span_s, uint32_t res_s, his
     if (!cb)
         return ESP_ERR_INVALID_ARG;
     return hist_core_span(s_dev[dev], dev, span_s, res_s, gw_time_mono_ms(), wall_now(), &s_env, NULL, cb, arg);
+}
+
+static esp_err_t history_clear_work(void *arg) {
+    const uint8_t dev = *(uint8_t *)arg;
+    xSemaphoreTake(s_file_mtx, portMAX_DELAY);
+    h_lock(NULL);
+    s_clear_mask |= 1u << dev;
+    hist_dev_clear(s_dev[dev]);
+    days_clear_locked();
+    h_unlock(NULL);
+    char path[48];
+    snprintf(path, sizeof(path), "%s/d%u", FS_DIR_HIST, dev);
+    esp_err_t err = fs_clear_dir(path);
+    h_lock(NULL);
+    s_clear_mask &= ~(1u << dev);
+    h_unlock(NULL);
+    xSemaphoreGive(s_file_mtx);
+    return err;
+}
+esp_err_t history_clear(uint8_t dev) {
+    if (!s_ready || s_frozen || dev >= GW_MAX_DEVICES || gw_events_in_loop_task() || persist_in_task())
+        return ESP_ERR_INVALID_STATE;
+    return persist_run(history_clear_work, &dev, sizeof(dev), 12000);
 }

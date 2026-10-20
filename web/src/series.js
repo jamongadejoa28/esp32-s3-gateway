@@ -3,7 +3,7 @@
 // Timestamps are on the CLIENT clock so the time window can be anchored to performance-based
 // "now" without depending on the gateway wall clock (which may be invalid).
 import { Ring } from './chart/ring.js';
-import { stageBits } from './live.js';
+import { stageBits, snapshotReady } from './live.js';
 
 export const S_TEMP = 0;
 export const S_HUM = 1;
@@ -63,7 +63,7 @@ export class DevSeries {
    */
   add(t, st) {
     const r = st && st.regs;
-    const ok = st && st.on && r;
+    const ok = snapshotReady(st);
     const v = (a) => (ok && r[a] !== undefined ? r[a] / 10 : NaN);
     const sample = { t, v: [v('40036'), v('40037'), v('40011'), v('40012'), v('40013')], f: ok ? stageBits(st.coils) : 0 };
     if (this.backfilling) {

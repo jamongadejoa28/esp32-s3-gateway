@@ -35,12 +35,12 @@ class PortCfg(C.Structure):
 
 
 class DevCfg(C.Structure):
-    _fields_ = [('id', C.c_uint8), ('slave', C.c_uint8), ('enabled', C.c_bool), ('name', C.c_char * 24)]
+    _fields_ = [('id', C.c_uint8), ('slave', C.c_uint8), ('enabled', C.c_bool), ('name', C.c_char * 24), ('template_id', C.c_char * 16), ('display_mask', C.c_uint32)]
 
 
 class Snapshot(C.Structure):
     _fields_ = [('regs', C.c_uint16 * 60), ('coils', C.c_uint32), ('wall_ms', C.c_int64), ('mono_ms', C.c_uint64),
-                ('seq', C.c_uint32), ('online', C.c_bool), ('slow_valid', C.c_bool)]
+                ('seq', C.c_uint32), ('online', C.c_bool), ('slow_valid', C.c_bool), ('measurement_valid', C.c_bool)]
 
 
 class WResult(C.Structure):
@@ -998,6 +998,13 @@ def test_cfg_validation(lib):
     C.memmove(C.addressof(arr[0]) + DevCfg.name.offset, b'x' * 24, 24)  # unterminated name
     assert not lib.mex_core_cfg_valid(C.byref(good), arr, 1)
     assert not lib.mex_core_cfg_valid(C.byref(good), None, 1)
+    arr, _ = make_devs([(0, 1, True)])
+    arr[0].template_id = b'mex150'
+    assert lib.mex_core_cfg_valid(C.byref(good), arr, 1)
+    arr[0].template_id = b'other'
+    assert not lib.mex_core_cfg_valid(C.byref(good), arr, 1)
+    C.memmove(C.addressof(arr[0]) + DevCfg.template_id.offset, b'x' * 16, 16)
+    assert not lib.mex_core_cfg_valid(C.byref(good), arr, 1)
 
 
 def test_configure_and_reconfigure_states(H, lib):
@@ -1262,7 +1269,7 @@ int main(void) {
     const mex_core_io_t io = {NULL, lk, ul, mono, wall, gap, wr, rd, papply, NULL, on_s, on_c, on_w};
     mex_core_init(&core, &io);
     mex_port_cfg_t port = {9600, 'N', 1, 300, 60, 2, 1, 2};
-    mex_dev_cfg_t devs[GW_MAX_DEVICES] = {{0, 1, true, "a"}, {1, 2, true, "b"}, {2, 3, false, "c"}, {3, 4, true, "d"}};
+    mex_dev_cfg_t devs[GW_MAX_DEVICES] = {{0, 1, true, "a", "mex150", GW_CHANNEL_DISPLAY_DEFAULT}, {1, 2, true, "b", "mex150", GW_CHANNEL_DISPLAY_DEFAULT}, {2, 3, false, "c", "mex150", GW_CHANNEL_DISPLAY_DEFAULT}, {3, 4, true, "d", "mex150", GW_CHANNEL_DISPLAY_DEFAULT}};
     if (mex_core_configure(&core, &port, devs, 4) != ESP_OK) return 2;
     static const uint16_t addrs[] = {40005, 40012, 40013, 40021, 40027, 40036, 40001, 40059};
     unsigned submitted = 0;
@@ -1638,3 +1645,33 @@ def test_enqueue_freshness_bounded_for_long_poll(H):
     h.bus.t += 8100  # missed more than one poll period: no longer accepted
     rc, out = h.submit(0, 40012, 251)
     assert (out.state, out.reason) == (W_REJECTED, R_OFFLINE)
+
+
+@pytest.mark.parametrize('offline_after', [1, 3])
+def test_startup_zero_pair_waits_for_measurement_and_rearms_after_disconnect(H, offline_after):
+    h = H(port=make_port(offline_after=offline_after, retries=0))
+    sim = h.sims[1]
+    sim.regs[36] = sim.regs[37] = 0
+    for _ in range(4):
+        h.cycle()
+        ok, s = h.snapshot()
+        assert ok and s.online and s.seq > 0, 'transport already answers full cycles'
+        assert not s.measurement_valid, 'initial 0/0 is unconfirmed, regardless of seq'
+    sim.regs[37] = 480  # actual 0.0 degC must not be hidden
+    h.cycle()
+    assert h.snapshot()[1].measurement_valid
+    sim.regs[37] = 0
+    h.cycle()
+    assert h.snapshot()[1].measurement_valid, '0/0 remains valid after readiness in this connection'
+    sim.alive = False
+    h.cycle()
+    assert h.comm() == (COMM_OFFLINE if offline_after == 1 else COMM_ONLINE)
+    assert not h.snapshot()[1].measurement_valid
+    sim.alive = True
+    for _ in range(3):
+        h.cycle()
+        assert h.comm() == COMM_ONLINE
+        assert not h.snapshot()[1].measurement_valid, 'reconnection must not reuse previous readiness'
+    sim.regs[36] = 230
+    h.cycle()
+    assert h.snapshot()[1].measurement_valid, 'actual 0.0 percent humidity is allowed too'

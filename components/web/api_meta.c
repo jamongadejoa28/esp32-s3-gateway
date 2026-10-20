@@ -176,3 +176,54 @@ esp_err_t h_meta_alarms(web_ctx_t *c) {
     free(p);
     return web_stream_end(c, &w);
 }
+
+/* Stream the shared catalog, without a per-request copy of the channel arrays. */
+esp_err_t h_meta_device_templates(web_ctx_t *c) {
+    const char *etag = web_meta_etag();
+    web_set_header(c, "ETag", etag);
+    web_set_header(c, "Cache-Control", "no-cache");
+    char inm[96];
+    if (web_header(c, "If-None-Match", inm, sizeof(inm)) && web_etag_match(inm, etag))
+        return web_send_status(c, 304);
+    gw_jw_t w;
+    if (web_stream_begin(c, 200, "application/json", NULL, &w) != ESP_OK)
+        return ESP_OK;
+    gw_jw_arr_open(&w);
+    for (size_t i = 0; i < gw_device_template_count; i++) {
+        const gw_device_template_t *t = &gw_device_templates[i];
+        gw_jw_obj_open(&w);
+        gw_jw_kstr(&w, "id", t->id);
+        gw_jw_kstr(&w, "name", t->name);
+        gw_jw_kstr(&w, "vendor", t->vendor);
+        gw_jw_kstr(&w, "category", t->category);
+        gw_jw_kstr(&w, "description", t->description);
+        gw_jw_kobj(&w, "serial");
+        gw_jw_kuint(&w, "baud", t->baud);
+        gw_jw_kuint(&w, "data_bits", t->data_bits);
+        gw_jw_kstr(&w, "parity", t->parity);
+        gw_jw_kuint(&w, "stop", t->stop_bits);
+        gw_jw_obj_close(&w);
+        gw_jw_karr(&w, "channels");
+        for (size_t j = 0; j < t->channel_count; j++) {
+            const gw_template_channel_t *ch = &t->channels[j];
+            gw_jw_obj_open(&w);
+            gw_jw_kuint(&w, "id", ch->id);
+            gw_jw_kstr(&w, "key", ch->key);
+            gw_jw_kstr(&w, "ko", ch->ko);
+            gw_jw_kstr(&w, "en", ch->en);
+            gw_jw_kstr(&w, "access", ch->access);
+            gw_jw_kstr(&w, "source", ch->source);
+            if (ch->addr)
+                gw_jw_kuint(&w, "addr", ch->addr);
+            else
+                gw_jw_knull(&w, "addr");
+            gw_jw_kuint(&w, "scale", ch->scale);
+            gw_jw_kstr(&w, "unit", ch->unit);
+            gw_jw_obj_close(&w);
+        }
+        gw_jw_arr_close(&w);
+        gw_jw_obj_close(&w);
+    }
+    gw_jw_arr_close(&w);
+    return web_stream_end(c, &w);
+}

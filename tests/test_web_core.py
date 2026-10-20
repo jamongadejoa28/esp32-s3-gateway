@@ -26,7 +26,9 @@ API_MD = ROOT / 'docs' / 'API.md'
 
 def match(lib, pattern, path):
     p = WebParams()
-    ok = lib.web_path_match(pattern.encode(), path.encode(), len(path.encode()), C.byref(p))
+    pattern_bytes, path_bytes = pattern.encode(), path.encode()
+    # web_path_match retains slices into pattern; keep the backing bytes alive while decoding.
+    ok = lib.web_path_match(pattern_bytes, path_bytes, len(path_bytes), C.byref(p))
     params = {}
     if ok:
         for i in range(p.n):
@@ -528,12 +530,12 @@ def ws_schema():
     return schema_validator('ws-server')
 
 
-def snap(lib, st, regs, coils, seq=1, now=0, force=False, online=True, ts=1792371601000):
+def snap(lib, st, regs, coils, seq=1, now=0, force=False, online=True, ts=1792371601000, ready=True):
     addrs = (C.c_uint16 * len(regs))(*regs.keys())
     raws = (C.c_int32 * len(regs))(*regs.values())
     w = Writer(lib)
     assert lib.ws_frame_snap(C.byref(st), w.ptr, 0, seq, ts, online, addrs, raws, len(regs), coils, force, now,
-                             30) == 0
+                             30, ready) == 0
     return w.json()
 
 
@@ -625,3 +627,13 @@ def test_parse_client(clib, msg, kind, topics):
     assert clib.ws_parse_client(raw, len(raw), C.byref(t)) == kind
     if topics is not None:
         assert t.value == topics
+
+
+def test_snap_measurement_readiness_is_independent_of_online_and_sequence(clib, ws_schema):
+    st = SnapState()
+    f = snap(clib, st, {40036: 0, 40037: 0}, 0, seq=5, online=True, ready=False)
+    ws_schema.validate(f)
+    assert f['on'] and f['seq'] == 5 and not f['ready']
+    f = snap(clib, st, {40036: 0, 40037: 480}, 0, seq=6, now=1000, ready=True)
+    ws_schema.validate(f)
+    assert f['ready'] and f['r'] == {'40037': 480}

@@ -234,7 +234,7 @@ export function mount(el, scope, { admin }) {
       const rows = items.filter((x) => x.type !== 'user_target' || !seqs.has(x.extra));
       replace(logBox, table([
         { label: '#', cls: 'n', cell: (x) => String(x.seq) },
-        { label: t('log.time'), cls: 'ts', cell: (x) => fmt.dateTime(x.ts) },
+        { label: t('log.time'), cls: 'ts', cell: (x) => fmt.logTime(x.ts) },
         { label: t('log.type'), cls: 'nowrap', cell: (x) => logType(x.type) },
         { label: t('log.user'), cell: (x) => x.user || '' },
         { label: t('log.detail'), cell: (x) => logDetail(x, targets.get(x.seq)) },
@@ -324,6 +324,7 @@ export function logDetail(x, target) {
       const bv = r && r.signed && before > 32767 ? before - 65536 : before;
       return `${dev}${r ? name(r) : x.code}: ${fmt.num(bv / scale, scale === 10 ? 1 : 0)} → ${fmt.num(x.value / scale, scale === 10 ? 1 : 0)} · ${t(`ws.${st}`)}`;
     }
+    case 'history_delete': return t('log.history_deleted', { kind: t(x.code ? 'log.alarm_history' : 'log.measurements'), n: x.extra });
     case 'time_set': case 'time_sync': return t(`log.src.${SRC[x.code] || 'rtc'}`);
     case 'reboot': case 'reboot_req': return t(`log.rb.${RB[x.code] || 'user'}`);
     case 'boot': return `${t('sys.reset')}: ${rstText(x.code)}`;

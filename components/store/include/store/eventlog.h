@@ -83,6 +83,7 @@ typedef enum {
     AUD_ALARM_ACK = 48,     /* "alarm_ack_req": dev, user, code=alarm code (0 = all) */
     AUD_STATS_RESET = 49,   /* "stats_reset": dev, user */
     AUD_SNMP_TEST = 50,     /* "snmp_test": user */
+    AUD_HISTORY_DELETE = 52, /* "history_delete": dev, code=0 measurements / 1 alarms, extra=count */
     AUD_USER_TARGET = 51,   /* "user_target": user=the account acted on by the record it follows
                                (user_add/user_mod/user_del, password by admin), code=that record's
                                type, value=its value, extra=its seq. The 32-byte record has room for
@@ -166,6 +167,17 @@ size_t evlog_query(evlog_kind_t kind, uint32_t before, size_t limit, const evlog
 
 /** Highest seq assigned so far in a log. */
 uint32_t evlog_last_seq(evlog_kind_t kind);
+
+/** Alarm-history deletion only: current active alarms and other event types are retained.
+ * seq selects one record; otherwise from_s/to_s select an inclusive UTC range (0 = unbounded).
+ * through_seq fences the operation from newer appends. Runs through persist, bounded wait. */
+typedef struct {
+    uint32_t seq, through_seq, from_s, to_s;
+    int16_t dev; /* -1 = all devices */
+    int8_t min_sev; /* -1 = all severities */
+} evlog_delete_t;
+bool evlog_delete_match(const evlog_delete_t *filter, const evlog_rec_t *r);
+esp_err_t evlog_delete_alarms(const evlog_delete_t *filter, uint32_t *deleted);
 
 /**
  * Factory reset (sysmgr, when logs are not kept): drop both RAM tails and pending appends, ask the

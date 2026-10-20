@@ -1,0 +1,28 @@
+/* Device templates. MEX150: industrialGateway-Demo/firmware/main/models/model_mex.c,
+ * mst_mex150_construct(), original model 111, category HVAC.AIR.1. Keep its 22 channel IDs,
+ * labels, order and access flags. NONE channels have no supported live/write binding.
+ * Add a template here only when its protocol driver is implemented and validated. */
+DEVICE_TEMPLATE(mex150, "mex150", "MST.MEX-150", "MST", "HVAC.AIR.1", "HVAC Air-Cooled", 9600, 8, "N", 1)
+CHANNEL(0, temperature, "온도", "Temperature", ro, reg, 40036, 10, "°C")
+CHANNEL(1, humidity, "습도", "Humidity", ro, reg, 40037, 10, "%")
+CHANNEL(2, operating_state, "운전상태", "Operating state", ro, mode, 0, 1, "")
+CHANNEL(3, air_volume, "풍량", "Air volume", disabled, none, 0, 1, "")
+CHANNEL(4, output_state, "동작상태", "Output state", ro, outputs, 0, 1, "")
+CHANNEL(5, power, "가동", "Power", rw, reg, 40005, 1, "")
+CHANNEL(6, alarm, "경보", "Alarm", ro, alarms, 0, 1, "")
+CHANNEL(7, outdoor_temperature, "외기온도", "Outdoor temperature", disabled, none, 0, 10, "°C")
+CHANNEL(8, outdoor_humidity, "외기습도", "Outdoor humidity", disabled, none, 0, 10, "%")
+CHANNEL(9, damper, "댐퍼", "Damper", disabled, none, 0, 1, "")
+CHANNEL(10, main_compressor_hp, "메인압축기HP", "Main compressor HP", disabled, none, 0, 1, "")
+CHANNEL(11, main_compressor_lp, "메인압축기LP", "Main compressor LP", disabled, none, 0, 1, "")
+CHANNEL(12, aux_compressor_hp, "보조압축기HP", "Auxiliary compressor HP", disabled, none, 0, 1, "")
+CHANNEL(13, aux_compressor_lp, "보조압축기LP", "Auxiliary compressor LP", disabled, none, 0, 1, "")
+CHANNEL(14, set_temperature, "설정온도", "Temperature setpoint", rw_conf, reg, 40012, 10, "°C")
+CHANNEL(15, cooling_deviation, "냉방편차", "Cooling deviation", rw_conf, reg, 40014, 10, "°C")
+CHANNEL(16, heating_deviation, "난방편차", "Heating deviation", rw_conf, reg, 40015, 10, "°C")
+CHANNEL(17, set_humidity, "설정습도", "Humidity setpoint", rw_conf, reg, 40013, 10, "%")
+CHANNEL(18, humidifying_deviation, "가습편차", "Humidifying deviation", rw_conf, reg, 40016, 10, "%")
+CHANNEL(19, dehumidifying_deviation, "제습편차", "Dehumidifying deviation", rw_conf, reg, 40017, 10, "%")
+CHANNEL(20, outdoor_set_temperature, "외기설정온도", "Outdoor temperature setpoint", conf_only, none, 0, 10, "°C")
+CHANNEL(21, outdoor_set_humidity, "외기설정습도", "Outdoor humidity setpoint", conf_only, none, 0, 10, "%")
+END_TEMPLATE(mex150)

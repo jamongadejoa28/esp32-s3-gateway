@@ -4,7 +4,7 @@
 import { h, clear, storage } from './dom.js';
 import { t, setLang, onLang, initialLang, lang } from './i18n/index.js';
 import * as api from './api.js';
-import { state, emit, set, resetData, live as liveOf } from './store.js';
+import { state, emit, set, resetData, updateDevices, live as liveOf } from './store.js';
 import { applySnap, applyAlarm, sortAlarms, fromRest } from './live.js';
 import { DevSeries } from './series.js';
 import { LiveSocket } from './ws.js';
@@ -13,6 +13,7 @@ import { renderLogin, renderPasswordChange } from './views/login.js';
 import { buildShell } from './shell.js';
 import { loadAlarmMeta } from './meta.js';
 import { startRouter, stopRouter } from './router.js';
+import { setTimeZone } from './time_zone.js';
 import { toast } from './ui.js';
 
 const root = document.getElementById('app');
@@ -137,12 +138,7 @@ async function loadMeta() {
 
 async function loadDevices() {
   const devs = await api.get('/devices');
-  state.devices = devs;
-  if (!devs.some((d) => d.id === state.dev && d.enabled)) {
-    const first = devs.find((d) => d.enabled) || devs[0];
-    state.dev = first ? first.id : 0;
-  }
-  emit('devices', devs);
+  updateDevices(devs);
 }
 
 
@@ -151,10 +147,16 @@ async function startApp() {
   lostOnce = false;
   root.replaceChildren(h('div.login', h('p.muted', { text: t('loading') })));
   try {
-    const [, , , alarms, general, modbus] = await Promise.all([
+    const [, , , alarms, general, modbus, templates, time, info] = await Promise.all([
       loadMeta(), loadAlarmMeta(), loadDevices(), api.get('/alarms/active'), api.get('/config/general'),
-      api.get('/config/modbus').catch(() => null), // poll_ms → freshness window (live.js staleAfterMs)
+      api.get('/config/modbus').catch(() => null), api.get('/meta/device-templates'), api.get('/config/time'), api.get('/system/info'), // poll_ms → freshness window (live.js staleAfterMs)
     ]);
+    state.templates = templates;
+    state.timeConfig = time;
+    setTimeZone(time.tz);
+    state.info = info;
+    state.srvValid = info.time_valid && info.time_ms !== null;
+    state.srvOffset = state.srvValid ? info.time_ms - Date.now() : 0;
     state.alarms = sortAlarms(alarms);
     state.general = general;
     if (modbus) state.pollMs = modbus.poll_ms;
@@ -254,7 +256,7 @@ function onMessage(m) {
       state.comm.set(m.dev, { online: m.online, rtt: m.rtt, err: m.err, rtts });
       if (!m.online) {
         const lv = state.live.get(m.dev);
-        if (lv && lv.on) { state.live.set(m.dev, { ...lv, on: false }); emit(`live:${m.dev}`, { changed: [] }); }
+        if (lv && lv.on) { state.live.set(m.dev, { ...lv, on: false, ready: false }); emit(`live:${m.dev}`, { changed: [] }); }
         series(m.dev).add(now, null);
         emit(`series:${m.dev}`);
       }
@@ -318,22 +320,27 @@ function startLive() {
 function startFallback() {
   if (fallbackTimer) return;
   let n = 0;
+  let busy = false;
   fallbackTimer = setInterval(async () => {
-    if (document.hidden || state.ws === 'open' || !downSince || Date.now() - downSince < 6000) return;
-    const d = state.dev;
+    if (busy || document.hidden || state.ws === 'open' || !downSince || Date.now() - downSince < 6000) return;
+    busy = true;
     try {
-      const lv = await api.get(`/devices/${d}/live`);
-      const now = Date.now();
-      const prev = liveOf(d);
-      const st = fromRest(lv, now);
-      state.live.set(d, st);
-      series(d).add(now, st);
-      emit(`live:${d}`, { state: st, changed: Object.keys(st.regs).filter((k) => prev.regs[k] !== st.regs[k]), coilsChanged: prev.coils !== st.coils });
-      emit(`series:${d}`);
+      for (const device of state.devices.filter((d) => d.enabled)) {
+        const d = device.id;
+        const lv = await api.get(`/devices/${d}/live`);
+        if (view !== 'app' || state.ws === 'open') return;
+        const now = Date.now();
+        const prev = liveOf(d);
+        const st = fromRest(lv, now);
+        state.live.set(d, st);
+        series(d).add(now, st);
+        emit(`live:${d}`, { state: st, changed: Object.keys(st.regs).filter((k) => prev.regs[k] !== st.regs[k]), coilsChanged: prev.coils !== st.coils });
+        emit(`series:${d}`);
+      }
       if (n++ % 5 === 0) {
         state.alarms = sortAlarms(await api.get('/alarms/active'));
         emit('alarms');
       }
-    } catch { /* keep trying */ }
+    } catch { /* keep trying */ } finally { busy = false; }
   }, 2000);
 }

@@ -67,9 +67,9 @@ esp_err_t h_system_info(web_ctx_t *c) {
     gw_jw_kstr(&w, "mac", mac);
     gw_jw_kstr(&w, "hostname", ns.hostname);
     gw_jw_kuint(&w, "uptime_s", si->uptime_s);
-    gw_jw_kbool(&w, "time_valid", si->time_valid);
+    gw_jw_kbool(&w, "time_valid", gw_time_valid());
     gw_jw_key(&w, "time_ms");
-    web_json_epoch_ms(&w, si->time_valid ? gw_time_wall_ms() : 0);
+    web_json_epoch_ms(&w, gw_time_wall_ms());
     gw_jw_kobj(&w, "heap");
     gw_jw_kuint(&w, "int_free", si->heap_int_free);
     gw_jw_kuint(&w, "int_min", si->heap_int_min);

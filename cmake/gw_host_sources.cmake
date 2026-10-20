@@ -4,6 +4,7 @@
 # Ownership: each implementation stream appends its own files to its component's list.
 
 set(GW_HOST_SOURCES_GW_CORE
+  "components/gw_core/device_templates.c"
   "components/gw_core/gw_crypto_util.c"
   "components/gw_core/gw_drbg.c"
   "components/gw_core/gw_snmp_key.c"

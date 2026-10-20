@@ -22,7 +22,8 @@ static void ulk(void *a) {
     (void)a;
     g_unlocks++;
 }
-static void files_counting(void *arg, uint8_t dev, uint32_t from, uint32_t to, hist_rec_cb_t cb, void *cb_arg) {
+static void files_counting(void *arg, uint8_t dev, uint32_t from, uint32_t to, hist_rec_cb_t cb,
+                           void *cb_arg) {
     g_file_calls++;
     hist_files_iter(arg, dev, from, to, cb, cb_arg);
 }
@@ -56,6 +57,7 @@ static void make_sample(uint64_t k, uint32_t ts, int gap_mod, hist_fast_t *f) {
     mex_snapshot_t s;
     memset(&s, 0, sizeof(s));
     s.online = true;
+    s.measurement_valid = true;
     s.mono_ms = 1;
     s.regs[36] = (uint16_t)temp_of(k);
     s.regs[37] = (uint16_t)hum_of(k);
@@ -128,7 +130,8 @@ static void test_acc_and_snapshot(void) {
         f.cur = 10;
         f.st = (int16_t)(100 + i);
         f.sh = 5;
-        f.coils = (i ? (1u << 0) | (1u << 3) | (1u << 7) : (1u << 14)) | (1u << 29); /* bit 14 = coil 15 dehum */
+        f.coils =
+            (i ? (1u << 0) | (1u << 3) | (1u << 7) : (1u << 14)) | (1u << 29); /* bit 14 = coil 15 dehum */
         f.flags = i ? HIST_F_RUNNING : HIST_F_ALARM;
         hist_acc_add(&a, &f);
     }
@@ -157,6 +160,7 @@ static void test_acc_and_snapshot(void) {
     memset(&s, 0, sizeof(s));
     s.online = true;
     s.regs[36] = 0xFFF6; /* -1.0 C, signed */
+    s.measurement_valid = true;
     s.regs[37] = 480;
     s.regs[11] = 42;
     s.regs[12] = 230;
@@ -183,6 +187,17 @@ static void test_acc_and_snapshot(void) {
     s.online = false;
     hist_fast_from_snapshot(&s, true, false, 79, &f);
     CHECK_EQ(f.flags, HIST_F_GAP);
+    s.online = true;
+    s.measurement_valid = false;
+    s.regs[36] = s.regs[37] = 0;
+    hist_fast_from_snapshot(&s, true, false, 79, &f);
+    CHECK_EQ(f.temp, HIST_GAP); /* a complete poll with startup 0/0 must not pollute history */
+    CHECK_EQ(f.hum, HIST_GAP);
+    CHECK_EQ(f.flags, HIST_F_GAP);
+    s.measurement_valid = true;
+    hist_fast_from_snapshot(&s, true, false, 79, &f);
+    CHECK_EQ(f.temp, 0); /* once confirmed, a real zero pair is retained */
+    CHECK_EQ(f.hum, 0);
     hist_fast_from_snapshot(NULL, true, false, 80, &f);
     CHECK_EQ(f.flags, HIST_F_GAP);
     CHECK_EQ(f.ts_s, 80);
@@ -196,10 +211,10 @@ static void test_pick_res(void) {
     static const struct {
         uint32_t span, req, want;
     } c[] = {
-        {900, 1, 1},       {1500, 1, 1},    {1501, 1, 5},       {3600, 1, 5},       {3600, 0, 5},
-        {3600, 7, 10},     {3600, 30, 30},  {3601, 1, 60},      {86400, 1, 60},     {86400, 60, 60},
-        {172800, 1, 300},  {7 * 86400, 1, 600}, {30 * 86400, 1, 1800}, {60, 7200, 7200}, {60, 9000, 7200},
-        {0, 1, 1},         {3600, 61, 300},
+        {900, 1, 1},      {1500, 1, 1},        {1501, 1, 5},          {3600, 1, 5},     {3600, 0, 5},
+        {3600, 7, 10},    {3600, 30, 30},      {3601, 1, 60},         {86400, 1, 60},   {86400, 60, 60},
+        {172800, 1, 300}, {7 * 86400, 1, 600}, {30 * 86400, 1, 1800}, {60, 7200, 7200}, {60, 9000, 7200},
+        {0, 1, 1},        {3600, 61, 300},
     };
     for (size_t i = 0; i < sizeof(c) / sizeof(c[0]); i++) {
         uint32_t got = hist_pick_res(c[i].span, c[i].req);
@@ -371,7 +386,8 @@ static void test_span_fast(void) {
     CHECK_EQ(io.n, 30);
     /* argument errors */
     CHECK_EQ(hist_core_span(&g_dev, 0, 0, 1, now, 0, &g_env, &io, NULL, NULL), ESP_ERR_INVALID_ARG);
-    CHECK_EQ(hist_core_span(&g_dev, 0, HIST_SPAN_MAX_S + 1, 1, now, 0, &g_env, &io, NULL, NULL), ESP_ERR_INVALID_ARG);
+    CHECK_EQ(hist_core_span(&g_dev, 0, HIST_SPAN_MAX_S + 1, 1, now, 0, &g_env, &io, NULL, NULL),
+             ESP_ERR_INVALID_ARG);
     io.avg[HIST_CH_SH] = NULL;
     CHECK_EQ(hist_core_span(&g_dev, 0, 10, 1, now, 0, &g_env, &io, NULL, NULL), ESP_ERR_INVALID_ARG);
     CHECK_EQ(hist_core_span(&g_dev, 0, 10, 1, now, 0, &g_env, NULL, NULL, NULL), ESP_ERR_INVALID_ARG);
@@ -455,7 +471,8 @@ static void make_minute(uint32_t ts, int16_t t, hist_slow_t *r) {
 
 static char g_path[700];
 static const char *day_file(uint8_t dev, uint32_t ts) {
-    snprintf(g_path, sizeof(g_path), "%s/d%u/%08u.bin", g_base, (unsigned)dev, (unsigned)gw_time_yyyymmdd(ts));
+    snprintf(g_path, sizeof(g_path), "%s/d%u/%08u.bin", g_base, (unsigned)dev,
+             (unsigned)gw_time_yyyymmdd(ts));
     return g_path;
 }
 
@@ -638,7 +655,8 @@ static void test_range_and_reload(void) {
     for (uint32_t b = 0; b < 100; b++)
         CHECK_EQ(A[HIST_CH_TEMP][b], temp_of(7000 + b));
     /* future part of a range is gaps */
-    CHECK_EQ(hist_core_range(&g_dev, 0, from + 190000, from + 210000, 1, now_wall, &g_env, &io, NULL, NULL), ESP_OK);
+    CHECK_EQ(hist_core_range(&g_dev, 0, from + 190000, from + 210000, 1, now_wall, &g_env, &io, NULL, NULL),
+             ESP_OK);
     CHECK_EQ(A[HIST_CH_TEMP][0], temp_of(7190));
     CHECK_EQ(A[HIST_CH_TEMP][15], HIST_GAP);
     /* an old range cannot use 1 s data: minimum 60 s */
@@ -666,9 +684,9 @@ static void test_range_and_reload(void) {
     series(&io, HIST_MAX_POINTS, false, true);
     CHECK_EQ(hist_core_range(&g_dev, 0, from, to, 1800, now_wall, &g_env, &io, NULL, NULL), ESP_OK);
     CHECK_EQ(io.dt_s, 1800);
-    CHECK_EQ(ST[HIST_STG_BLOWER][0], 1800);       /* file minutes: 30 x 60 s */
-    CHECK_EQ(ST[HIST_STG_BLOWER][2], 900);        /* RAM: every 2nd second */
-    CHECK_EQ(ST[HIST_STG_BLOWER][5], 900);        /* overlap file+RAM counted once */
+    CHECK_EQ(ST[HIST_STG_BLOWER][0], 1800); /* file minutes: 30 x 60 s */
+    CHECK_EQ(ST[HIST_STG_BLOWER][2], 900);  /* RAM: every 2nd second */
+    CHECK_EQ(ST[HIST_STG_BLOWER][5], 900);  /* overlap file+RAM counted once */
     /* row iteration stops on request */
     rc = (rows_t){0};
     rc.stop_at = 2;
@@ -684,7 +702,8 @@ static void test_range_and_reload(void) {
     /* relative query older than the rings reads the files (needs wall time) */
     series(&io, HIST_MAX_POINTS, false, false);
     g_file_calls = 0;
-    CHECK_EQ(hist_core_span(&g_dev, 0, 3 * 86400, 1, 7200000 + 300, now_wall, &g_env, &io, NULL, NULL), ESP_OK);
+    CHECK_EQ(hist_core_span(&g_dev, 0, 3 * 86400, 1, 7200000 + 300, now_wall, &g_env, &io, NULL, NULL),
+             ESP_OK);
     CHECK_EQ(io.dt_s, 300);
     CHECK_EQ(g_file_calls, 1);
     uint32_t gaps = 0;
@@ -697,19 +716,24 @@ static void test_range_and_reload(void) {
     CHECK_EQ(g_file_calls, 0);
     CHECK_EQ(A[HIST_CH_TEMP][0], HIST_GAP);
     /* errors */
-    CHECK_EQ(hist_core_range(&g_dev, 0, from, from, 1, now_wall, &g_env, &io, NULL, NULL), ESP_ERR_INVALID_ARG);
-    CHECK_EQ(hist_core_range(&g_dev, 0, from, from + 1000, 1, 0, &g_env, &io, NULL, NULL), ESP_ERR_INVALID_STATE);
+    CHECK_EQ(hist_core_range(&g_dev, 0, from, from, 1, now_wall, &g_env, &io, NULL, NULL),
+             ESP_ERR_INVALID_ARG);
+    CHECK_EQ(hist_core_range(&g_dev, 0, from, from + 1000, 1, 0, &g_env, &io, NULL, NULL),
+             ESP_ERR_INVALID_STATE);
     CHECK_EQ(hist_core_range(&g_dev, 0, -5, 1000, 1, now_wall, &g_env, &io, NULL, NULL), ESP_ERR_INVALID_ARG);
-    CHECK_EQ(hist_core_range(&g_dev, 0, 0, (int64_t)(HIST_SPAN_MAX_S + 1) * 1000, 60, now_wall, &g_env, &io, NULL,
-                             NULL),
+    CHECK_EQ(hist_core_range(&g_dev, 0, 0, (int64_t)(HIST_SPAN_MAX_S + 1) * 1000, 60, now_wall, &g_env, &io,
+                             NULL, NULL),
              ESP_ERR_INVALID_ARG);
     /* a start older than the retention (?from=1&to=2) is refused; exactly the retention is fine */
-    CHECK_EQ(hist_core_range(&g_dev, 0, 1000, 2000, 1, now_wall, &g_env, &io, NULL, NULL), ESP_ERR_INVALID_ARG);
+    CHECK_EQ(hist_core_range(&g_dev, 0, 1000, 2000, 1, now_wall, &g_env, &io, NULL, NULL),
+             ESP_ERR_INVALID_ARG);
     {
         const int64_t oldest = now_wall - (int64_t)HIST_RETENTION_DAYS * 86400 * 1000;
-        CHECK_EQ(hist_core_range(&g_dev, 0, oldest - 1000, oldest + 3600000, 60, now_wall, &g_env, &io, NULL, NULL),
+        CHECK_EQ(hist_core_range(&g_dev, 0, oldest - 1000, oldest + 3600000, 60, now_wall, &g_env, &io, NULL,
+                                 NULL),
                  ESP_ERR_INVALID_ARG);
-        CHECK_EQ(hist_core_range(&g_dev, 0, oldest, oldest + 3600000, 60, now_wall, &g_env, &io, NULL, NULL), ESP_OK);
+        CHECK_EQ(hist_core_range(&g_dev, 0, oldest, oldest + 3600000, 60, now_wall, &g_env, &io, NULL, NULL),
+                 ESP_OK);
         CHECK(io.t0_age_ms < (uint64_t)HIST_RETENTION_DAYS * 86400 * 1000 + 1000); /* from floored to 1 s */
     }
 
@@ -790,8 +814,8 @@ static void test_missed_ticks(void) {
     /* the absolute query over the same window agrees */
     series(&io, HIST_MAX_POINTS, false, false);
     int64_t wall_now = (int64_t)(W0 + 1200u) * 1000 + 250;
-    CHECK_EQ(hist_core_range(&g_dev, 5, (int64_t)W0 * 1000, (int64_t)(W0 + 1200u) * 1000, 60, wall_now, &g_env, &io,
-                             NULL, NULL),
+    CHECK_EQ(hist_core_range(&g_dev, 5, (int64_t)W0 * 1000, (int64_t)(W0 + 1200u) * 1000, 60, wall_now,
+                             &g_env, &io, NULL, NULL),
              ESP_OK);
     CHECK_EQ(io.n, 20);
     for (uint32_t b = 0; b < 20 && io.n == 20; b++)
@@ -849,8 +873,8 @@ static void test_missed_ticks(void) {
         CHECK_EQ(A[HIST_CH_TEMP][b], b == 0 ? 100 : b == 13 ? 200 : HIST_GAP);
     series(&io, HIST_MAX_POINTS, false, false);
     wall_now = (int64_t)(W0 + 8400u) * 1000 + 250;
-    CHECK_EQ(hist_core_range(&g_dev, 5, (int64_t)W0 * 1000, (int64_t)(W0 + 8400u) * 1000, 600, wall_now, &g_env,
-                             &io, NULL, NULL),
+    CHECK_EQ(hist_core_range(&g_dev, 5, (int64_t)W0 * 1000, (int64_t)(W0 + 8400u) * 1000, 600, wall_now,
+                             &g_env, &io, NULL, NULL),
              ESP_OK);
     CHECK_EQ(io.n, 14);
     for (uint32_t b = 0; b < 14 && io.n == 14; b++)
@@ -862,7 +886,8 @@ static void test_missed_ticks(void) {
 static int g_coarse_calls;
 
 /* Reference rollup provider: what the device cache serves, rebuilt from the files on every call. */
-static void coarse_from_files(void *arg, uint8_t dev, uint32_t from, uint32_t to, hist_coarse_cb_t cb, void *cb_arg) {
+static void coarse_from_files(void *arg, uint8_t dev, uint32_t from, uint32_t to, hist_coarse_cb_t cb,
+                              void *cb_arg) {
     g_coarse_calls++;
     CHECK_EQ(from % HIST_COARSE_S, 0);
     static hist_day_t d;
@@ -912,11 +937,11 @@ static void test_coarse(void) {
     make_minute(day0 + 720, 0, &r);
     r.samples = 0;
     r.flags = HIST_F_GAP;
-    hist_day_add(&d, &r);                    /* gap minute: counted, flags only */
+    hist_day_add(&d, &r); /* gap minute: counted, flags only */
     make_minute(day0 - 60, 999, &r);
-    hist_day_add(&d, &r);                    /* previous day: ignored */
+    hist_day_add(&d, &r); /* previous day: ignored */
     make_minute(600 | HIST_TS_UPTIME, 999, &r);
-    hist_day_add(&d, &r);                    /* uptime-stamped: ignored */
+    hist_day_add(&d, &r); /* uptime-stamped: ignored */
     const hist_coarse_t *c = &d.c[1];
     CHECK_EQ(d.c[0].minutes, 0);
     CHECK_EQ(c->minutes, 3);

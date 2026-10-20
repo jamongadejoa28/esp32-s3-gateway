@@ -3,11 +3,11 @@
 // list from WS "alarm" frames. No DOM, no I/O: unit-tested in web/test/live.test.mjs.
 
 /** Empty per-device live state. */
-export const emptyLive = () => ({ seq: 0, ts: null, on: false, regs: {}, coils: 0, known: false, rx: 0 });
+export const emptyLive = () => ({ seq: 0, ts: null, on: false, ready: false, regs: {}, coils: 0, known: false, rx: 0 });
 
 /** State from GET /devices/{d}/live. */
 export function fromRest(r, rxMs) {
-  return { seq: r.seq, ts: r.ts, on: r.online, regs: { ...r.regs }, coils: r.coils >>> 0, known: !!r.derived, rx: rxMs };
+  return { seq: r.seq, ts: r.ts, on: r.online, ready: r.measurement_valid !== false, regs: { ...r.regs }, coils: r.coils >>> 0, known: !!r.derived, fresh: r.fresh, rx: rxMs };
 }
 
 /**
@@ -18,6 +18,7 @@ export function fromRest(r, rxMs) {
  */
 export function applySnap(cur, m, rxMs) {
   const s = cur || emptyLive();
+  if (!m.seq) return { state: emptyLive(), changed: Object.keys(s.regs), coilsChanged: !!s.coils, applied: true };
   const older = s.known && m.seq <= s.seq && s.seq - m.seq < 1000 && !m.full;
   if (older) return { state: s, changed: [], coilsChanged: false, applied: false };
   const regs = m.full ? {} : { ...s.regs };
@@ -28,7 +29,7 @@ export function applySnap(cur, m, rxMs) {
   }
   if (m.full) for (const k of Object.keys(s.regs)) if (!(k in regs)) changed.push(k);
   const coils = m.c === undefined ? s.coils : m.c >>> 0;
-  const state = { seq: m.seq, ts: m.ts, on: m.on, regs, coils, known: s.known || !!m.full || Object.keys(regs).length > 0, rx: rxMs };
+  const state = { seq: m.seq, ts: m.ts, on: m.on, ready: m.ready ?? (m.full || !s.seq ? true : s.ready), regs, coils, known: s.known || !!m.full || Object.keys(regs).length > 0, rx: rxMs };
   return { state, changed, coilsChanged: coils !== s.coils, applied: true };
 }
 
@@ -152,3 +153,7 @@ export const initFaultNames = (bits) => INIT_FAULTS.filter((_, i) => (bits >>> i
 
 /** True when settings cannot persist (LittleFS mount or store init failed). */
 export const storageFailed = (info) => !!(info && info.diag && (info.diag.init_faults & 0x03));
+
+/** At least one complete published fast cycle, with both measurements present. Real zero is valid. */
+export const snapshotReady = (st) => !!st?.known && st.seq > 0 && st.on && st.ready !== false && st.fresh !== false &&
+  Number.isFinite(st.regs?.[40036]) && Number.isFinite(st.regs?.[40037]);

@@ -8,7 +8,8 @@ import { derive } from '../live.js';
 import * as fmt from '../fmt.js';
 import { req, get, reasonText, errText } from '../api.js';
 import { confirmDlg, toast, stateText } from '../ui.js';
-import { devicePicker } from './dashboard.js';
+import { deviceStatus } from '../device_templates.js';
+import { devicePicker } from '../device_picker.js';
 
 const GROUPS = ['setpoint', 'deviation', 'delay', 'limits', 'calibration', 'options', 'info'];
 
@@ -167,7 +168,7 @@ export function mount(root, args, scope) {
   function paint() {
     const st = live(dev);
     const d = derive(st);
-    const ok = st.known && st.on;
+    const ok = deviceStatus(state.devices.find((x) => x.id === dev), st, Date.now(), state.pollMs, state.comm.get(dev)) === 'online';
     // run panel
     if (!d || !ok) {
       runDot.className = 'dot';
@@ -187,7 +188,7 @@ export function mount(root, args, scope) {
     }
     // registers
     for (const row of rows.values()) {
-      const raw = st.regs[String(row.r.addr)];
+      const raw = ok ? st.regs[String(row.r.addr)] : undefined;
       if (!row.editing) {
         const txt = raw === undefined ? fmt.DASH : fmt.regValue(row.r, raw);
         const unit = raw === undefined || fmt.isDisabled(row.r, raw) || row.r.enum ? '' : row.r.unit;
@@ -203,7 +204,7 @@ export function mount(root, args, scope) {
     }
     // bits
     for (const x of bitDots) {
-      const raw = st.regs[String(x.b.addr)];
+      const raw = ok ? st.regs[String(x.b.addr)] : undefined;
       const v = raw === undefined ? null : (raw >> x.b.lsb) & ((1 << x.b.width) - 1);
       if (x.v) {
         setText(x.v, v === null ? fmt.DASH : `${v} ${x.b.unit}`.trim());

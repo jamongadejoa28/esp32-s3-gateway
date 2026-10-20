@@ -191,7 +191,7 @@ def declare(lib):
         # web: WS frames
         'ws_frame_snap': ([C.POINTER(SnapState), C.c_void_p, C.c_uint8, C.c_uint32, C.c_int64, C.c_bool,
                            C.POINTER(C.c_uint16), C.POINTER(C.c_int32), C.c_size_t, C.c_uint32, C.c_bool,
-                           C.c_uint64, C.c_uint32], C.c_int),
+                           C.c_uint64, C.c_uint32, C.c_bool], C.c_int),
         'ws_frame_alarm': ([C.c_void_p, C.c_uint8, C.c_char_p, C.c_uint, C.c_uint, C.c_uint, C.c_int64,
                             C.c_uint32, C.c_int, C.c_char_p], None),
         'ws_frame_write': ([C.c_void_p, C.c_uint8, C.c_uint32, C.c_uint, C.c_int, C.c_bool, C.c_int32, C.c_char_p,

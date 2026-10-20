@@ -201,7 +201,7 @@ typedef struct {
  */
 int ws_frame_snap(ws_snap_state_t *st, gw_jw_t *w, uint8_t dev, uint32_t seq, int64_t ts_ms, bool online,
                   const uint16_t *addr, const int32_t *raw, size_t n, uint32_t coils, bool force_full,
-                  uint64_t now_mono_ms, uint32_t full_period_s);
+                  uint64_t now_mono_ms, uint32_t full_period_s, bool measurement_valid);
 
 /** {"t":"alarm",...}; type 1 raise / 2 clear / 3 ack; user only for ack (NULL/"" omitted). */
 void ws_frame_alarm(gw_jw_t *w, uint8_t dev, const char *id, unsigned code, unsigned type, unsigned sev,

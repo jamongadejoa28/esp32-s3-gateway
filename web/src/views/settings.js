@@ -31,5 +31,5 @@ export function mount(root, args, scope) {
   }, icon(ic), t(`set.${k}`))));
   const body = h('div.set-body');
   replace(root, h('div.page', h('div.page-head', h('h1', { text: t('nav.settings') })), h('div.settings', nav, body)));
-  cur[2].mount(body, scope, { admin: can('admin') });
+  cur[2].mount(body, scope, { admin: can('admin'), add: args[1] === 'add' });
 }

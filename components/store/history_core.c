@@ -114,7 +114,7 @@ void hist_fast_from_snapshot(const mex_snapshot_t *s, bool fresh, bool any_alarm
     out->ts_s = ts_s;
     if (any_alarm)
         out->flags |= HIST_F_ALARM;
-    if (!s || !fresh || !s->online) {
+    if (!s || !fresh || !s->online || !s->measurement_valid) {
         out->temp = out->hum = out->cur = out->st = out->sh = HIST_GAP;
         out->coils = 0;
         out->flags |= HIST_F_GAP;
@@ -390,8 +390,8 @@ bool hist_day_add_cb(void *day, const hist_slow_t *r) {
 static_assert(HIST_COARSE_MIN == W_SCALE, "rollup split unit");
 
 typedef struct {
-    int64_t wsum[3];   /* x W_SCALE */
-    uint32_t samples;  /* x W_SCALE */
+    int64_t wsum[3];  /* x W_SCALE */
+    uint32_t samples; /* x W_SCALE */
     int16_t mn[3], mx[3];
     int16_t st, sh;
     uint32_t stage[HIST_STG_COUNT]; /* x W_SCALE */
@@ -799,7 +799,9 @@ esp_err_t hist_core_span(hist_dev_t *d, uint8_t dev, uint32_t span_s, uint32_t r
         if (m.last_mono == 0)
             slot0_mono = now_mono_ms;
         else
-            slot0_mono = m.last_mono > (uint64_t)(ticks0 - 1) * 1000u ? m.last_mono - (uint64_t)(ticks0 - 1) * 1000u : 0;
+            slot0_mono = m.last_mono > (uint64_t)(ticks0 - 1) * 1000u
+                             ? m.last_mono - (uint64_t)(ticks0 - 1) * 1000u
+                             : 0;
         uint64_t age0 = now_mono_ms > slot0_mono ? now_mono_ms - slot0_mono : 0;
         t0_age = age0 + (uint64_t)(S - 1) * 60000u;
         if (now_wall_ms > 0) {
@@ -807,7 +809,7 @@ esp_err_t hist_core_span(hist_dev_t *d, uint8_t dev, uint32_t span_s, uint32_t r
             e.t0_ms = now_wall_ms - (int64_t)t0_age;
         }
         int64_t ring_lo = (int64_t)m.slow_total - (int64_t)m.slow_count; /* oldest abs minute held */
-        int64_t j_ring_end = a0 - ring_lo;                                  /* last slot served by RAM */
+        int64_t j_ring_end = a0 - ring_lo;                               /* last slot served by RAM */
         if (j_ring_end > S - 1)
             j_ring_end = S - 1;
         /* Older slots: 10-minute rollups or daily files (wall time needed to address them). */
@@ -985,8 +987,8 @@ static int day_path(char *out, size_t cap, const char *base, uint8_t dev, uint32
 }
 
 static bool hdr_ok(const hist_file_hdr_t *h, uint32_t day, uint8_t dev) {
-    return h->magic == HIST_FILE_MAGIC && h->version == 1 && h->rec_size == sizeof(hist_slow_t) && h->day == day &&
-           h->dev == dev;
+    return h->magic == HIST_FILE_MAGIC && h->version == 1 && h->rec_size == sizeof(hist_slow_t) &&
+           h->day == day && h->dev == dev;
 }
 
 static esp_err_t append_day(const char *base, uint8_t dev, uint32_t day, const hist_slow_t *recs, size_t n) {
@@ -1033,8 +1035,8 @@ static esp_err_t append_day(const char *base, uint8_t dev, uint32_t day, const h
         return ESP_FAIL;
     bool ok = true;
     if (fresh) {
-        hist_file_hdr_t h = {.magic = HIST_FILE_MAGIC, .version = 1, .rec_size = sizeof(hist_slow_t), .day = day,
-                             .dev = dev};
+        hist_file_hdr_t h = {
+            .magic = HIST_FILE_MAGIC, .version = 1, .rec_size = sizeof(hist_slow_t), .day = day, .dev = dev};
         ok = fwrite(&h, sizeof(h), 1, f) == 1;
     }
     ok = ok && fwrite(recs, sizeof(*recs), n, f) == n;
@@ -1068,7 +1070,8 @@ esp_err_t hist_files_append(const char *base, uint8_t dev, const hist_slow_t *re
     return rc;
 }
 
-void hist_files_iter(void *base_arg, uint8_t dev, uint32_t from_s, uint32_t to_s, hist_rec_cb_t cb, void *cb_arg) {
+void hist_files_iter(void *base_arg, uint8_t dev, uint32_t from_s, uint32_t to_s, hist_rec_cb_t cb,
+                     void *cb_arg) {
     const char *base = base_arg;
     if (!base || !cb || to_s <= from_s)
         return;

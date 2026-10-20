@@ -122,7 +122,7 @@ const sgw_dev_t *sgw_dev_by_index(uint32_t dev_index) {
 bool sgw_snap_fresh(const mex_snapshot_t *s) {
     cfg_modbus_t mb;
     const uint32_t poll_ms = cfg_get_section(CFG_SEC_MODBUS, &mb, sizeof(mb)) == ESP_OK ? mb.port.poll_ms : 0;
-    return alm_sample_fresh(s, gw_time_mono_ms(), poll_ms);
+    return s && s->measurement_valid && alm_sample_fresh(s, gw_time_mono_ms(), poll_ms);
 }
 
 const char *sgw_sys_string(sgw_sys_t which) {
@@ -406,7 +406,8 @@ static void on_alarm(void *arg, esp_event_base_t base, int32_t id, void *data) {
     gw_strlcpy(ev.user, a->user, sizeof(ev.user));
     event_insert(&ev);
     if (a->type == GW_ALARM_RAISE || a->type == GW_ALARM_CLEAR) {
-        (void)snmp_gw_trap_alarm(a->dev, a->code, a->sev, a->type == GW_ALARM_RAISE, a->value, a->seq, a->ts_ms);
+        (void)snmp_gw_trap_alarm(a->dev, a->code, a->sev, a->type == GW_ALARM_RAISE, a->value, a->seq,
+                                 a->ts_ms);
     }
 }
 
@@ -479,8 +480,8 @@ static esp_err_t register_handlers(void) {
         int32_t id;
         esp_event_handler_t fn;
     } h[] = {
-        {GW_EVT_ALARM, on_alarm},   {GW_EVT_COMM, on_comm},          {GW_EVT_CONFIG_CHANGED, on_config},
-        {GW_EVT_OTA, on_ota},       {GW_EVT_WRITE_RESULT, on_write},
+        {GW_EVT_ALARM, on_alarm}, {GW_EVT_COMM, on_comm},          {GW_EVT_CONFIG_CHANGED, on_config},
+        {GW_EVT_OTA, on_ota},     {GW_EVT_WRITE_RESULT, on_write},
     };
     for (size_t i = 0; i < sizeof(h) / sizeof(h[0]); i++) {
         esp_err_t err = gw_events_register(h[i].id, h[i].fn, NULL, NULL);
@@ -512,7 +513,7 @@ esp_err_t snmp_gw_start(void) {
     gw_strlcpy(s_fw_version, esp_app_get_description()->version, sizeof(s_fw_version));
 
     static const snmp_module_t *const mods[] = {
-        &sgw_mod_system, &sgw_mod_framework, &sgw_mod_usm,     &sgw_mod_gw,        &sgw_mod_dev,
+        &sgw_mod_system,     &sgw_mod_framework,    &sgw_mod_usm,      &sgw_mod_gw,    &sgw_mod_dev,
         &sgw_mod_mex_status, &sgw_mod_mex_setpoint, &sgw_mod_mex_regs, &sgw_mod_alarm, &sgw_mod_comm,
     };
     for (size_t i = 0; i < sizeof(mods) / sizeof(mods[0]); i++) {
@@ -568,8 +569,8 @@ static esp_err_t post_or_count(const sgw_msg_t *m) {
     return err;
 }
 
-esp_err_t snmp_gw_trap_alarm(uint8_t dev, uint16_t code, uint8_t sev, bool raised, int16_t value, uint32_t seq,
-                             int64_t ts_ms) {
+esp_err_t snmp_gw_trap_alarm(uint8_t dev, uint16_t code, uint8_t sev, bool raised, int16_t value,
+                             uint32_t seq, int64_t ts_ms) {
     if (dev >= GW_MAX_DEVICES) {
         return ESP_ERR_INVALID_ARG;
     }

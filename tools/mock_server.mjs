@@ -12,6 +12,8 @@
 // --ready starts with admin's password already changed to "Mestio-Admin#2026" (UI development).
 // Mock-only test hooks live under /__mock/* (loopback clients only); they are not part of the API.
 import http from 'node:http';
+import { readDeviceTemplates } from './device_templates.mjs';
+const DEVICE_TEMPLATES = readDeviceTemplates();
 import { networkInterfaces, tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
@@ -165,7 +167,7 @@ const HOSTNAME = 'mestio-gw-3456';
 const clone = (o) => structuredClone(o);
 function defaultConfig() {
   const devices = [];
-  for (let i = 0; i < OPT.devices; i++) devices.push({ id: i, name: i ? `MEX150 #${i + 1}` : 'MEX150', slave: i + 1, enabled: true });
+  for (let i = 0; i < OPT.devices; i++) devices.push({ id: i, name: i ? `MEX150 #${i + 1}` : 'MEX150', slave: i + 1, enabled: true, template_id: 'mex150', display_mask: 0x3fffff });
   return {
     general: OPT.ready ? { site: 'B동 전산실', location: 'Seoul', contact: 'facility@example.com', lang: 'ko' } : { site: '', location: '', contact: '', lang: 'ko' },
     network: { eth: { mode: 'static', ip: '192.168.10.150', mask: '255.255.255.0', gw: '192.168.10.1', dns1: '192.168.10.1', dns2: '' },
@@ -495,7 +497,7 @@ function tod(ms) { return ((ms / 1000) + 9 * 3600) % 86400; } // KST time-of-day
 
 function makeDevice(id) {
   const d = { id, sim: new Mex(id), hist: new History(), online: false, commKnown: false, failCycles: 0, seq: 0, snapMono: null,
-    snapRegs: null, snapCoils: 0, slowValid: false, lastSlow: 0, commLossLeft: 0, forcedOffline: false,
+    snapRegs: null, snapCoils: 0, slowValid: false, measurementValid: false, lastSlow: 0, commLossLeft: 0, forcedOffline: false,
     nextCommLoss: monoMs() + rint(15, 30) * 60000,
     stats: { tx: 0, rx_ok: 0, crc: 0, timeout: 0, exception: 0, malformed: 0, rtt_last: 0, rtt_sum: 0, rtt_n: 0, rtt_max: 0, online_since: null, offline_count: 0, cycles: 0 },
     rtts: [], writeQueue: 0, alarmCnt: new Map() };
@@ -543,7 +545,7 @@ function syncDevices() {
     const en = devCfg(d.id)?.enabled;
     if (!en) {
       // Disabled devices produce no COMM and their alarms are cleared (alm_engine_set_enabled).
-      d.online = false; d.commKnown = false; d.snapRegs = null; d.snapMono = null; d.failCycles = 0;
+      d.online = false; d.commKnown = false; d.snapRegs = null; d.snapMono = null; d.failCycles = 0; d.measurementValid = false;
       for (const a of [...activeAlarms.values()]) if (a.dev === d.id) clearAlarm(a, 'disabled');
     }
   }
@@ -557,6 +559,7 @@ function pollCycle(d) {
   const blocks = 8 + (now - d.lastSlow >= 10000 || !d.slowValid ? 3 : 0);
   st.cycles++;
   if (lossActive) {
+    d.measurementValid = false;
     st.tx += 1 + cfg.modbus.retries; st.timeout += 1 + cfg.modbus.retries;
     d.failCycles++;
     if ((d.online || !d.commKnown) && d.failCycles >= cfg.modbus.offline_after) setOnline(d, false);
@@ -574,6 +577,7 @@ function pollCycle(d) {
   d.snapMono = now;
   d.snapRegs = new Map(d.sim.regs);
   d.snapCoils = d.sim.coils;
+  d.measurementValid ||= d.snapRegs.get(40036) !== 0 || d.snapRegs.get(40037) !== 0;
   if (!d.online) setOnline(d, true);
   alarmFeedSnapshot(d);
   broadcastSnap(d);
@@ -585,6 +589,7 @@ function setOnline(d, on) {
   const wasOnline = d.commKnown && d.online;
   d.commKnown = true;
   d.online = on;
+  if (!on) d.measurementValid = false;
   if (on) d.stats.online_since = wallMs();
   else { if (wasOnline) d.stats.offline_count++; d.stats.online_since = null; }
   logAppend('system', on ? 'comm_restored' : 'comm_lost', { dev: d.id, code: 301, sev: on ? 0 : 2 });
@@ -651,6 +656,7 @@ const ruleAddr = (src) => (src === 'temp' ? 40036 : src === 'hum' ? 40037 : src 
 function ruleValue(d, src) {
   if (!d || !isFresh(d)) return null;
   const addr = ruleAddr(src);
+  if ((addr === 40036 || addr === 40037) && !d.measurementValid) return null;
   const r = REG_BY_ADDR.get(addr);
   if (!r || !d.snapRegs.has(addr)) return null;
   return d.snapRegs.get(addr) / r.scale;
@@ -957,7 +963,8 @@ function liveView(d) {
     }
   }
   return { seq: d.seq, ts: d.snapMono === null ? null : toWall(d.snapMono), online: d.online, fresh: isFresh(d), slow_valid: d.slowValid,
-    regs, coils: d.snapRegs ? d.snapCoils : 0, derived: d.snapRegs ? derived(d.snapRegs, d.snapCoils) : null };
+    measurement_valid: d.measurementValid,
+    regs, coils: d.snapRegs ? d.snapCoils : 0, derived: d.snapRegs && d.measurementValid ? derived(d.snapRegs, d.snapCoils) : null };
 }
 function derived(regs, coils) {
   const b = (n) => (coils >>> (n - 1)) & 1;
@@ -1008,6 +1015,9 @@ function validateSection(s, v, clientIpAddr) {
     for (const [i, dv] of v.devices.entries()) {
       if (ids.has(dv.id)) bad(`devices[${i}].id`, 'duplicate', 'duplicate device id');
       ids.add(dv.id);
+      dv.display_mask ??= 0x3fffff;
+      dv.template_id ??= 'mex150';
+      if (!DEVICE_TEMPLATES.some((t) => t.id === dv.template_id)) bad(`devices[${i}].template_id`, 'range', 'unsupported template');
       if (Buffer.byteLength(dv.name) > 23) bad(`devices[${i}].name`, 'length', 'at most 23 bytes');
       if (dv.enabled) { if (slaves.has(dv.slave)) bad(`devices[${i}].slave`, 'duplicate', 'slave id already used'); slaves.add(dv.slave); }
     }
@@ -1064,6 +1074,10 @@ function schemaCheck(name, body) {
 function applySectionPut(s, body, user, ip) {
   if (s === 'snmp') return applySnmpPut(body, user);
   const next = deepMerge(cfg[s], body);
+  if (s === 'modbus' && body.devices) next.devices = body.devices.map((d) => ({
+    id: d.id, name: '', slave: d.id + 1, enabled: true, template_id: 'mex150', display_mask: 0x3fffff,
+    ...cfg.modbus.devices.find((old) => old.id === d.id), ...d,
+  }));
   // sev_override is a map value: a present object replaces the stored map (otherwise no override
   // could ever be removed by a merge); every other object merges member-wise (API.md §1).
   if (s === 'alarms' && body.sev_override) next.sev_override = clone(body.sev_override);
@@ -1187,6 +1201,11 @@ route('POST', '/auth/password', 'cookie', { body: 'json', req: 'auth-password.re
 });
 
 // --- meta ---
+route('GET', '/meta/device-templates', 'viewer', {}, (ctx) => {
+  const etag = `"${createHash('sha256').update(JSON.stringify(DEVICE_TEMPLATES)).digest('hex').slice(0, 16)}"`;
+  if (ctx.req.headers['if-none-match'] === etag) return reply(304, undefined, { ETag: etag, 'Cache-Control': 'no-cache' });
+  return reply(200, DEVICE_TEMPLATES, { ETag: etag, 'Cache-Control': 'no-cache' });
+});
 route('GET', '/meta/registers', 'viewer', {}, (ctx) => {
   if (ctx.req.headers['if-none-match'] === META_ETAG) return reply(304, undefined, { ETag: META_ETAG, 'Cache-Control': 'no-cache' });
   return reply(200, META_REGISTERS, { ETag: META_ETAG, 'Cache-Control': 'no-cache' });
@@ -1216,7 +1235,7 @@ route('GET', '/system/network', 'admin', {}, () => {
 // --- devices ---
 route('GET', '/devices', 'viewer', {}, () => cfg.modbus.devices.map((c) => {
   const d = devs.get(c.id);
-  return { id: c.id, name: c.name, slave: c.slave, enabled: c.enabled, online: !!d?.online, last_ms: d?.snapMono ? toWall(d.snapMono) : null, seq: d?.seq ?? 0 };
+  return { id: c.id, name: c.name, template_id: c.template_id, display_mask: c.display_mask ?? 0x3fffff, slave: c.slave, enabled: c.enabled, online: c.enabled && !!d?.online, last_ms: d?.snapMono ? toWall(d.snapMono) : null, seq: d?.seq ?? 0 };
 }));
 route('GET', '/devices/{d}/live', 'viewer', {}, (ctx) => liveView(devOf(ctx.params)));
 route('PUT', '/devices/{d}/registers/{addr}', 'operator', { body: 'json', req: 'register-write.request' }, async (ctx) => {
@@ -1272,6 +1291,11 @@ function historyRange(q) {
   }
   throw E(400, 'bad_request', 'no resolution fits 1500 points');
 }
+route('DELETE', '/devices/{d}/history', 'admin', {}, (ctx) => {
+  const d = devOf(ctx.params); d.hist = new History();
+  audit('history_delete', ctx.u.name, { dev: d.id, code: 0 });
+  return reply(204);
+});
 route('GET', '/devices/{d}/history', 'viewer', {}, (ctx) => {
   const d = devOf(ctx.params);
   const { a, dt, n } = historyRange(ctx.query);
@@ -1323,6 +1347,23 @@ function alarmItems(q, max) {
   }
   return out;
 }
+route('DELETE', '/alarms/history', 'admin', { body: 'json', req: 'alarms-history-delete.request' }, (ctx) => {
+  const b = ctx.body;
+  if (b.mode === 'range' && b.from > b.to) throw E(422, 'validation', 'to must be >= from', { field: 'to', code: 'range' });
+  const through = logSeq.system;
+  const before = logs.system.length;
+  logs.system = logs.system.filter((r) => {
+    if (!['alarm_raise', 'alarm_clear', 'alarm_ack'].includes(r.type) || r.seq > through) return true;
+    if (b.dev !== undefined && b.dev !== r.dev) return true;
+    if (b.sev !== undefined && r.sev < b.sev) return true;
+    if (b.mode === 'one') return r.seq !== b.seq;
+    if (b.mode === 'range') { const ts = toWall(r.mono); return ts === null || ts < b.from || ts > b.to; }
+    return false;
+  });
+  const deleted = before - logs.system.length;
+  audit('history_delete', ctx.u.name, { dev: b.dev ?? null, code: 1, extra: deleted });
+  return { deleted };
+});
 route('GET', '/alarms/history', 'viewer', {}, (ctx) => {
   const limit = intQ(ctx.query, 'limit', 50, 1, 200);
   const items = alarmItems(ctx.query, limit);
@@ -1718,6 +1759,7 @@ function broadcast(topic, frame) {
   for (const ws of wsClients) if (ws.gw.topics.has(topic)) send(ws, frame);
 }
 function broadcastSnap(d) {
+  if (!d.seq) return;
   const now = monoMs();
   for (const ws of wsClients) {
     if (!ws.gw.topics.has('snap')) continue;
@@ -1729,7 +1771,7 @@ function broadcastSnap(d) {
       const v = d.snapRegs.get(reg.addr) ?? 0;
       if (full || st.regs.get(reg.addr) !== v) r[String(reg.addr)] = v;
     }
-    const f = { t: 'snap', dev: d.id, seq: d.seq, ts: toWall(d.snapMono), on: d.online, full, r };
+    const f = { t: 'snap', dev: d.id, seq: d.seq, ts: toWall(d.snapMono), on: d.online, ready: d.measurementValid, full, r };
     if (full || st.coils !== d.snapCoils) f.c = d.snapCoils;
     if (full) st.lastFull = now;
     st.regs = new Map(d.snapRegs); st.coils = d.snapCoils;
@@ -1804,7 +1846,7 @@ function tick() {
     if (en) {
       const t = Math.floor(now / 1000) * 1000;
       if (t > d.lastSample) {
-        d.hist.sampleFast(t, isFresh(d) ? { temp: d.snapRegs.get(40036), hum: d.snapRegs.get(40037), cur: d.snapRegs.get(40011), st: d.snapRegs.get(40012), sh: d.snapRegs.get(40013), coils: d.snapCoils } : null);
+        d.hist.sampleFast(t, isFresh(d) && d.measurementValid ? { temp: d.snapRegs.get(40036), hum: d.snapRegs.get(40037), cur: d.snapRegs.get(40011), st: d.snapRegs.get(40012), sh: d.snapRegs.get(40013), coils: d.snapCoils } : null);
         d.lastSample = t;
       }
     }

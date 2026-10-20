@@ -10,6 +10,7 @@
 #include "store/persist.h"
 
 #include <stdatomic.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "esp_log.h"
@@ -238,4 +239,54 @@ esp_err_t persist_flush(uint32_t timeout_ms) {
     if (rc != ESP_OK)
         ESP_LOGW(TAG, "flush timed out after %u ms", (unsigned)timeout_ms);
     return rc;
+}
+
+typedef struct {
+    atomic_uint refs;
+    SemaphoreHandle_t done;
+    persist_result_fn_t fn;
+    esp_err_t result;
+    unsigned char data[];
+} result_job_t;
+static void result_release(result_job_t *job) {
+    if (atomic_fetch_sub(&job->refs, 1) == 1) {
+        vSemaphoreDelete(job->done);
+        free(job);
+    }
+}
+static void result_work(void *arg) {
+    result_job_t *job = arg;
+    job->result = job->fn(job->data);
+    xSemaphoreGive(job->done);
+    result_release(job);
+}
+esp_err_t persist_run(persist_result_fn_t fn, void *data, size_t size, uint32_t timeout_ms) {
+    if (!fn || !data || !size || size > 4096)
+        return ESP_ERR_INVALID_ARG;
+    if (persist_in_task())
+        return fn(data);
+    result_job_t *job = calloc(1, sizeof(*job) + size);
+    if (!job)
+        return ESP_ERR_NO_MEM;
+    job->done = xSemaphoreCreateBinary();
+    if (!job->done) {
+        free(job);
+        return ESP_ERR_NO_MEM;
+    }
+    atomic_init(&job->refs, 2);
+    job->fn = fn;
+    memcpy(job->data, data, size);
+    esp_err_t err = persist_submit(result_work, job, 0);
+    if (err != ESP_OK) {
+        result_release(job);
+        result_release(job);
+        return err;
+    }
+    if (xSemaphoreTake(job->done, pdMS_TO_TICKS(timeout_ms)) == pdTRUE) {
+        err = job->result;
+        memcpy(data, job->data, size);
+    } else
+        err = ESP_ERR_TIMEOUT;
+    result_release(job);
+    return err;
 }

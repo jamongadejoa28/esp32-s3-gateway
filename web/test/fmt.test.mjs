@@ -18,8 +18,8 @@ test('num: fixed decimals, grouping, true minus, no negative zero', () => {
   assert.equal(fmt.num(12345, 0), '12,345');
   assert.equal(fmt.num(-3.2, 1), '−3.2');
   assert.equal(fmt.num(-0.04, 1), '0.0');
-  assert.equal(fmt.num(null), '—');
-  assert.equal(fmt.num(NaN, 1), '—');
+  assert.equal(fmt.num(null), '--');
+  assert.equal(fmt.num(NaN, 1), '--');
 });
 
 test('signed deltas', () => {
@@ -27,7 +27,7 @@ test('signed deltas', () => {
   assert.equal(fmt.signed(0.56, 1), '+0.6');
   assert.equal(fmt.signed(-1.24, 1), '−1.2');
   assert.equal(fmt.signed(0.01, 1), '0.0');
-  assert.equal(fmt.signed(undefined), '—');
+  assert.equal(fmt.signed(undefined), '--');
 });
 
 test('register values: scale ×10, signed, disabled sentinel, enum', () => {
@@ -41,7 +41,7 @@ test('register values: scale ×10, signed, disabled sentinel, enum', () => {
   assert.equal(fmt.regValue(run, 0x0a01), 'Run', 'run bit of the full 40005 word');
   assert.equal(fmt.regValue(run, 0), 'Stop');
   assert.equal(fmt.regText(hours, 5000), '5,000 h');
-  assert.equal(fmt.regValue(hours, undefined), '—');
+  assert.equal(fmt.regValue(hours, undefined), '--');
   assert.equal(fmt.isDisabled(hiTemp, 249), true);
   assert.equal(fmt.isDisabled(offset, 0), false);
 });
@@ -77,7 +77,7 @@ test('durations, ages and run hours in both languages', () => {
   assert.equal(fmt.duration(42), '42초');
   assert.equal(fmt.duration(3 * 3600 + 5 * 60), '3시간 05분');
   assert.equal(fmt.hoursMin(3 * 3600 + 7 * 60 + 29), '3:07');
-  assert.equal(fmt.hoursMin(null), '—');
+  assert.equal(fmt.hoursMin(null), '--');
 });
 
 test('dates and axis labels use local time, 24 h', () => {
@@ -88,7 +88,7 @@ test('dates and axis labels use local time, 24 h', () => {
   assert.equal(fmt.tickLabel(ms, 'm'), '07:03');
   assert.equal(fmt.tickLabel(ms, 'd'), '10-19');
   assert.equal(fmt.tickLabel(new Date(2026, 9, 19).getTime(), 'm'), '10-19', 'midnight shows the date');
-  assert.equal(fmt.dateTime(null), '—');
+  assert.equal(fmt.dateTime(null), '--');
 });
 
 test('bytes, percent, UTF-8 length', () => {

@@ -10,6 +10,7 @@ export const state = {
   regs: new Map(), // addr -> reg meta
   alarmMeta: new Map(), // id -> meta alarm
   devices: [],
+  templates: [],
   dev: 0,
   live: new Map(), // dev -> live state (live.js)
   series: new Map(), // dev -> DevSeries
@@ -76,3 +77,21 @@ export function selectDevice(d) {
 
 /** Enabled devices (for device pickers). */
 export const enabledDevices = () => state.devices.filter((d) => d.enabled);
+
+/** Invalidate values/history if an ID is removed or rebound to another physical device. */
+export function updateDevices(devices) {
+  for (const old of state.devices) {
+    const next = devices.find((d) => d.id === old.id);
+    if (!next || next.slave !== old.slave || next.enabled !== old.enabled || next.template_id !== old.template_id) {
+      state.live.delete(old.id);
+      state.series.delete(old.id);
+      state.comm.delete(old.id);
+    }
+  }
+  state.devices = devices;
+  if (!devices.some((d) => d.id === state.dev && d.enabled)) {
+    state.dev = (devices.find((d) => d.enabled) || devices[0])?.id ?? 0;
+    emit('dev', state.dev);
+  }
+  emit('devices', devices);
+}

@@ -1,20 +1,24 @@
 // Hash router: #/<view>[/<sub>]. Each view module exports mount(root, args, scope); the scope is
 // disposed on navigation so subscriptions, timers and charts never leak.
-import { Scope, clear } from './dom.js';
-import { emit, on } from './store.js';
+import { Scope, clear, h } from './dom.js';
+import { emit, on, state, selectDevice } from './store.js';
+import * as devices from './views/devices.js';
 import * as dashboard from './views/dashboard.js';
+import { t } from './i18n/index.js';
+import * as device from './views/device.js';
+import * as monitor from './views/monitor.js';
 import * as controller from './views/controller.js';
-import * as trends from './views/trends.js';
 import * as alarms from './views/alarms.js';
 import * as settings from './views/settings.js';
 
-export const VIEWS = { dashboard, controller, trends, alarms, settings };
-export const NAV = ['dashboard', 'controller', 'trends', 'alarms', 'settings'];
+export const VIEWS = { dashboard, devices, device, monitor, controller, alarms, settings };
+export const NAV = ['dashboard', 'devices', 'controller', 'alarms', 'settings'];
 
 let outlet = null;
 let scope = null;
 let current = null;
 let offDev = null;
+let routing = false;
 
 const safeDecode = (x) => {
   try { return decodeURIComponent(x); } catch { return x; } // malformed %-escape: keep it raw
@@ -28,7 +32,8 @@ export function parseHash(hash) {
 }
 
 function route() {
-  if (!outlet) return;
+  if (!outlet || routing) return;
+  routing = true;
   const r = parseHash(location.hash);
   if (scope) scope.dispose();
   scope = new Scope();
@@ -37,17 +42,30 @@ function route() {
   outlet.scrollTop = 0;
   window.scrollTo(0, 0);
   try {
-    VIEWS[r.view].mount(outlet, r.args, scope);
+    const specific = ['device', 'monitor', 'controller'].includes(r.view) && r.args.length > 0;
+    const id = /^\d+$/.test(r.args[0] || '') ? Number(r.args[0]) : -1;
+    if (specific && !state.devices.some((d) => d.id === id)) {
+      outlet.append(h('div.page', h('p.empty', { text: t('devices.not_found') }),
+        h('a', { href: '#/dashboard', text: t('devices.back') })));
+    } else {
+      if (specific) selectDevice(id);
+      VIEWS[r.view].mount(outlet, r.args, scope);
+    }
   } catch (e) {
     console.error(e);
   }
+  routing = false;
   emit('route', r);
 }
 
 export function startRouter(el) {
   outlet = el;
   window.addEventListener('hashchange', route);
-  offDev = on('dev', route); // device-scoped views re-mount for the newly selected device
+  offDev = on('dev', () => {
+    if (routing) return;
+    if (current?.args.length && ['monitor', 'controller'].includes(current.view)) go(`${current.view}/${state.dev}`);
+    else route();
+  }); // device-scoped views re-mount for the newly selected device
   route();
 }
 

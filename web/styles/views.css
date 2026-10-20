@@ -778,3 +778,75 @@ details.panel[open] > summary .i {
 details.panel:not([open]) > summary {
   border-bottom: 0;
 }
+
+/* Registered-device portal and template details. */
+.device-intro { margin: 0 0 24px; max-width: 64ch; }
+.device-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.device-grid > .panel { margin: 0; }
+.device-card { min-width: 0; display: flex; flex-direction: column; transition: border-color var(--t-fast); }
+.device-card:focus-within, .device-card:hover { border-color: var(--accent); }
+.device-card-head { display: flex; gap: 12px; justify-content: space-between; align-items: flex-start; padding: 20px; }
+.device-card-head h2 { margin: 0 0 6px; font-size: var(--fs-20); overflow-wrap: anywhere; }
+.device-card-head p { margin: 0; }
+.device-title { color: var(--text); text-decoration: none; }
+.device-title:hover { color: var(--accent); text-decoration: underline; }
+.device-status { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-size: var(--fs-12); color: var(--muted); }
+.device-status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--offline); flex-shrink: 0; }
+.device-status.online { color: var(--ok-ink); }
+.device-status.online::before { background: var(--ok); }
+.device-status.stale { color: var(--warn-ink); }
+.device-status.stale::before { background: var(--warn); }
+.device-status.offline { color: var(--alarm-ink); }
+.device-status.offline::before { background: var(--alarm); }
+.device-readings { display: grid; grid-template-columns: 1fr 1fr; padding: 4px 20px 20px; gap: 16px; }
+.device-readings > div > span { font-size: var(--fs-13); color: var(--muted); }
+.device-readings b { font-size: var(--fs-28); font-weight: 600; font-variant-numeric: tabular-nums; }
+.device-readings .unit { font-size: var(--fs-14); color: var(--muted); }
+.device-card-state { display: flex; justify-content: space-between; gap: 12px; padding: 0 20px 20px; font-size: var(--fs-13); }
+.device-card-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--line); margin-top: auto; }
+.device-back { display: inline-block; margin-bottom: 16px; }
+.template-table th[scope="row"] { font-weight: 500; width: 28%; }
+.template-value { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; white-space: normal; }
+.template-table td { white-space: normal; }
+@media (max-width: 1280px) { .device-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+  .device-grid { grid-template-columns: 1fr; gap: 16px; }
+  .device-card-head { padding: 16px; }
+  .template-table { min-width: 0; }
+  .template-table th, .template-table td { padding: 12px 8px; }
+}
+
+/* Reference IA cards: one device per vertical card, details expand below current values. */
+.ia-device-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 340px)); gap: 18px; align-items: start; }
+.ia-device-grid > .panel { margin: 0; }
+.ia-card-head { padding: 14px 16px 12px; border-bottom: 1px solid var(--line); }
+.ia-card-head h2 { margin: 3px 0 10px; font-size: var(--fs-20); overflow-wrap: anywhere; }
+.ia-card-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ia-channel { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 48px; padding: 9px 16px; border-bottom: 1px solid var(--line); }
+.ia-label { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); flex-shrink: 0; }
+.ia-reading { text-align: right; min-width: 0; overflow-wrap: anywhere; }
+.ia-reading b { display: block; font-size: var(--fs-14); font-weight: 600; font-variant-numeric: tabular-nums; }
+.ia-reading small { display: block; color: var(--muted); font-size: var(--fs-12); }
+.ia-card-details summary { cursor: pointer; padding: 10px 16px; color: var(--accent); border-bottom: 1px solid var(--line); }
+.ia-card-actions, .ia-control { display: flex; gap: 8px; padding: 12px 16px; flex-wrap: wrap; }
+.ia-control { border-bottom: 1px solid var(--line); }
+.device-channel-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin-top: 12px; }
+.device-channel-option { display: flex; gap: 8px; align-items: center; font-size: var(--fs-13); }
+.device-channel-option small { margin-left: auto; }
+.device-form details > summary { cursor: pointer; padding: 8px 0; }
+.monitor-popup { position: fixed; inset: 0; margin: auto; width: calc(100vw - 48px); max-width: 1440px; height: min(960px, calc(100dvh - 48px)); max-height: none; padding: 0; border: 1px solid var(--line); border-radius: var(--r-panel); color: var(--text); background: var(--bg); }
+.monitor-popup[open] { display: flex; flex-direction: column; }
+.monitor-popup::backdrop { background: var(--scrim); }
+.monitor-toolbar { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--surface); flex-shrink: 0; }
+.monitor-body { overflow: auto; flex: 1; min-height: 0; }
+.monitor-body .page { padding: 20px; }
+.monitor-body .page-head h1 { font-size: var(--fs-20); }
+.chart-wait { padding: 40px 20px; text-align: center; color: var(--muted); }
+@media (max-width: 640px) {
+  .ia-device-grid { grid-template-columns: minmax(0, 1fr); }
+  .monitor-popup { position: fixed; inset: 0; margin: auto; width: 100vw; max-width: 100vw; height: 100dvh; margin: 0; border-radius: 0; border: 0; }
+  .monitor-body .page { padding: 12px; }
+  .device-channel-options { grid-template-columns: 1fr; }
+}
+
+body:has(dialog.monitor-popup[open]) { overflow: hidden; }

@@ -16,7 +16,7 @@ class Block(C.Structure):
 
 class Snapshot(C.Structure):
     _fields_ = [('regs', C.c_uint16 * 60), ('coils', C.c_uint32), ('wall_ms', C.c_int64), ('mono_ms', C.c_uint64),
-                ('seq', C.c_uint32), ('online', C.c_bool), ('slow_valid', C.c_bool)]
+                ('seq', C.c_uint32), ('online', C.c_bool), ('slow_valid', C.c_bool), ('measurement_valid', C.c_bool)]
 
 
 FAST = [(1, 0, 8), (1, 8, 8), (1, 16, 8), (1, 24, 8), (3, 1, 3), (3, 4, 4), (3, 10, 12), (3, 35, 2)]

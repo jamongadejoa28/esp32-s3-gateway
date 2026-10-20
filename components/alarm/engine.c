@@ -255,8 +255,8 @@ bool alm_sample_fresh(const mex_snapshot_t *s, uint64_t now_mono_ms, uint32_t po
     return age < window;
 }
 
-void alm_engine_tick_rules(alm_engine_t *e, uint8_t dev, const mex_snapshot_t *s, bool fresh, uint64_t mono_ms,
-                           int64_t wall_ms) {
+void alm_engine_tick_rules(alm_engine_t *e, uint8_t dev, const mex_snapshot_t *s, bool fresh,
+                           uint64_t mono_ms, int64_t wall_ms) {
     if (dev >= GW_MAX_DEVICES || !e->enabled[dev])
         return;
     bool evaluable = e->online[dev] && s && fresh && s->online;
@@ -269,7 +269,8 @@ void alm_engine_tick_rules(alm_engine_t *e, uint8_t dev, const mex_snapshot_t *s
         if (a < 0)
             continue;
         alm_slot_t *sl = &e->slot[dev][a];
-        if (!evaluable || !mex_reg_find(r->addr) || (is_slow_reg(r->addr) && !s->slow_valid)) {
+        if (!evaluable || !mex_reg_find(r->addr) || (is_slow_reg(r->addr) && !s->slow_valid) ||
+            ((r->addr == 40036 || r->addr == 40037) && !s->measurement_valid)) {
             sl->pend_mono_ms = 0; /* frozen: an on-delay never spans unobserved time */
             continue;
         }

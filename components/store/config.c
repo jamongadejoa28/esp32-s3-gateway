@@ -285,6 +285,8 @@ static void def_modbus(cfg_modbus_t *m) {
     m->devices[0].slave = 1;
     m->devices[0].enabled = true;
     store_strset(m->devices[0].name, sizeof(m->devices[0].name), "MEX150");
+    store_strset(m->devices[0].template_id, sizeof(m->devices[0].template_id), GW_DEFAULT_TEMPLATE_ID);
+    m->devices[0].display_mask = GW_CHANNEL_DISPLAY_DEFAULT;
     m->n_devices = 1;
 }
 
@@ -490,6 +492,9 @@ static bool v_modbus(const cfg_modbus_t *m, cfg_verr_t *err) {
             return fail(err, "range", "modbus.devices[%u].id", i);
         if (d->slave < 1 || d->slave > 247)
             return fail(err, "range", "modbus.devices[%u].slave", i);
+        if (!memchr(d->template_id, 0, sizeof(d->template_id)) ||
+            (d->template_id[0] && !gw_device_template_find(d->template_id)))
+            return fail(err, "range", "modbus.devices[%u].template_id", i);
         if (!store_text_ok(d->name, sizeof(d->name), GW_DEV_NAME_SZ - 1))
             return fail(err, "format", "modbus.devices[%u].name", i);
         for (unsigned j = 0; j < i; j++) {

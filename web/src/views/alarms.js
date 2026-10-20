@@ -3,9 +3,10 @@
 import { h, icon, replace, download, setText, toggle } from '../dom.js';
 import { t, name } from '../i18n/index.js';
 import { state, on, can, devName } from '../store.js';
-import { post, get, fetchBlob } from '../api.js';
+import { post, get, req, fetchBlob } from '../api.js';
+import { parseDisplayTime } from '../time_zone.js';
 import * as fmt from '../fmt.js';
-import { sevMark, toast, toastErr } from '../ui.js';
+import { sevMark, toast, toastErr, confirmDlg } from '../ui.js';
 
 /** Display of an alarm `value` (raw of its value register; temperature/humidity alarms are ×10). */
 export function alarmValue(id, v) {
@@ -29,6 +30,7 @@ export function mount(root, args, scope) {
 }
 
 function active(body, scope, multi) {
+  body.appendChild(h('p.muted', { text: t('alarms.auto_clear') }));
   const sel = new Set();
   const op = can('operator');
   const ackSel = h('button.btn', { type: 'button', disabled: true }, icon('check'), t('alarms.ack_sel'));
@@ -150,28 +152,49 @@ function history(body, scope, multi) {
     [3, 2, 1].map((s) => h('option', { value: String(s), text: t('alarms.sev_min', { s: t(`sev.${s}`) }) })));
   const csv = h('button.btn', { type: 'button' }, icon('down'), 'CSV');
   const more = h('button.btn', { type: 'button', hidden: true, text: t('more') });
+  const from = h('input.inp', { type: 'datetime-local', step: 1, 'aria-label': t('alarms.from') });
+  const to = h('input.inp', { type: 'datetime-local', step: 1, 'aria-label': t('alarms.to') });
+  const clearRange = h('button.btn.danger', { type: 'button', text: t('alarms.delete_range'), on: { click: () => {
+    const start = parseDisplayTime(from.value), end = parseDisplayTime(to.value);
+    if (start === null || end === null || start > end) { toast(t('alarms.range_required'), 'warn'); return; }
+    deleteHistory({ mode: 'range', from: start, to: end });
+  } } });
+  const clearAll = h('button.btn.danger', { type: 'button', text: t('alarms.delete_all'), on: { click: () => deleteHistory({ mode: 'all' }) } });
+  let deleting = false;
+  async function deleteHistory(body) {
+    if (!can('admin') || deleting || !await confirmDlg({ title: t('alarms.delete_q'), text: t('alarms.delete_text'), ok: t('remove'), danger: true })) return;
+    deleting = true; clearRange.disabled = true; clearAll.disabled = true;
+    try {
+      const result = await req('DELETE', '/alarms/history', { body: { ...body,
+        ...(devSel.value !== '' ? { dev: Number(devSel.value) } : {}), ...(sevSel.value !== '' ? { sev: Number(sevSel.value) } : {}) } });
+      toast(t('alarms.deleted_count', { n: result.deleted }));
+      if (!scope.dead) await load(true);
+    } catch (e) { toastErr(e); }
+    deleting = false; clearRange.disabled = false; clearAll.disabled = false;
+  }
   const tbody = h('tbody');
   const q = () => ({ dev: devSel.value, sev: sevSel.value });
   body.append(
     h('div.filters', multi ? h('div', devSel) : null, h('div', sevSel), h('span.grow'), csv),
+    ...(can('admin') ? [h('div.filters', h('label', t('alarms.from'), from), h('label', t('alarms.to'), to), clearRange, clearAll)] : []),
     h('section.panel', h('div.tbl-wrap', h('table.tbl', h('caption.sr', { text: t('alarms.history') }),
       h('thead', h('tr', h('th', { scope: 'col', text: t('alarms.col.time') }), h('th', { scope: 'col', text: t('alarms.col.event') }),
         h('th', { scope: 'col', text: t('alarms.col.sev') }), h('th', { scope: 'col', text: t('alarms.col.alarm') }),
         multi ? h('th', { scope: 'col', text: t('alarms.col.dev') }) : null,
-        h('th.n', { scope: 'col', text: t('alarms.col.value') }), h('th', { scope: 'col', text: t('alarms.col.user') }))),
+        h('th.n', { scope: 'col', text: t('alarms.col.value') }), h('th', { scope: 'col', text: t('alarms.col.user') }), can('admin') ? h('th', { scope: 'col', text: t('remove') }) : null)),
       tbody)), h('div.panel-b', more)));
 
   const evIcon = { raise: 'alert', clear: 'check', ack: 'user' };
   function paint() {
     if (!items.length) { replace(tbody, h('tr', h('td.empty', { colspan: 7, text: t('alarms.no_history') }))); return; }
     replace(tbody, items.map((it) => h('tr',
-      h('td.ts', { text: fmt.dateTime(it.ts) }),
+      h('td.ts', { text: fmt.logTime(it.ts) }),
       h('td', h('span.state-t', icon(evIcon[it.type], 's16'), t(`alarms.ev.${it.type}`))),
       h('td', sevMark(it.sev)),
       h('td.nm', { text: alarmName(it.id) }),
       multi ? h('td', { text: devName(it.dev) }) : null,
       h('td.n', { text: alarmValue(it.id, it.value) }),
-      h('td', { text: it.user || '' }))));
+      h('td', { text: it.user || '' }), can('admin') ? h('td', h('button.btn.sm.danger', { type: 'button', text: t('remove'), 'aria-label': t('alarms.delete_one'), on: { click: () => deleteHistory({ mode: 'one', seq: it.seq }) } })) : null)));
     more.hidden = next === null;
   }
   // Each filter change starts a new generation: older responses are dropped, so the list always

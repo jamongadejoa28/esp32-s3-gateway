@@ -8,13 +8,13 @@ import { NAV, currentRoute } from './router.js';
 import * as fmt from './fmt.js';
 import { changeOwnPassword } from './views/account.js';
 
-const NAV_ICON = { dashboard: 'dash', controller: 'ctrl', trends: 'trend', alarms: 'bell', settings: 'gear' };
+const NAV_ICON = { dashboard: 'dash', devices: 'plug', monitor: 'trend', controller: 'ctrl', alarms: 'bell', settings: 'gear' };
 
 /** Run state pill model for the selected device. */
 export function runPill(d) {
   const st = live(d);
   const dv = derive(st);
-  if (!st.known || !st.on || !dv || dv.running === null) return { cls: '', text: t('run.unknown') };
+  if (!st.known || !st.on || Date.now() - st.rx > staleAfterMs(state.pollMs) || !dv || dv.running === null) return { cls: '', text: t('run.unknown') };
   if (dv.running && dv.runDelay && dv.delay) return { cls: 'warn', text: t('run.starting', { n: dv.delay }) };
   if (!dv.running && dv.stopDelay && dv.delay) return { cls: 'warn', text: t('run.stopping', { n: dv.delay }) };
   return dv.running ? { cls: 'ok', text: t('run.run') } : { cls: '', text: t('run.stop') };
@@ -122,11 +122,12 @@ export function buildShell({ logout, setTheme, effectiveTheme, themeFollowsSyste
     const ws = state.ws;
     let cls = 'dot';
     let txt;
-    if (ws !== 'open' && ws !== 'idle') { cls += ' warn'; txt = t('strip.reconnecting'); } else if (!st.known) { txt = t('strip.waiting'); } else if (!st.on) { cls += ' alarm'; txt = t('strip.offline'); } else {
+    if (ws !== 'open' && ws !== 'idle') { cls += ' warn'; txt = fmt.DASH; comm.title = t('strip.reconnecting'); } else if (!st.known) { txt = fmt.DASH; comm.title = t('strip.waiting'); } else if (!st.on) { cls += ' alarm'; txt = fmt.DASH; comm.title = t('strip.offline'); } else {
       const a = Date.now() - st.rx;
       const stale = a > staleAfterMs(state.pollMs);
       cls += stale ? ' warn' : ' ok';
-      txt = fmt.age(a);
+      txt = stale ? fmt.DASH : fmt.age(a);
+      comm.title = t(stale ? 'devices.status.stale' : 'devices.status.online');
       toggle(comm, 'stale', stale);
     }
     commDot.className = cls;
@@ -153,13 +154,13 @@ export function buildShell({ logout, setTheme, effectiveTheme, themeFollowsSyste
     h('a', { href: '#/settings/system', text: t('sys.see_diag') })) : null);
   };
   const paintClock = () => {
-    const now = state.srvValid ? Date.now() + state.srvOffset : Date.now();
+    const now = state.srvValid ? Date.now() + state.srvOffset : null;
     setText(clockEl, fmt.clock(now));
   };
   const paintRoute = () => {
     const r = currentRoute();
     for (const a of app.querySelectorAll('.nav a')) {
-      if (r && a.dataset.v === r.view) a.setAttribute('aria-current', 'page');
+      if (r && a.dataset.v === (r.view === 'device' ? 'dashboard' : r.view)) a.setAttribute('aria-current', 'page');
       else a.removeAttribute('aria-current');
     }
   };
@@ -178,7 +179,7 @@ export function buildShell({ logout, setTheme, effectiveTheme, themeFollowsSyste
   sc.add(on('general', paintSite));
   sc.add(on('ws', paintComm));
   sc.add(on('alarms', paintAlarms));
-  sc.add(on('clock', () => { paintClock(); paintComm(); }));
+  sc.add(on('clock', () => { paintClock(); paintComm(); paintPill(); }));
   sc.add(on('theme', paintTheme));
   sc.add(on('route', () => { paintRoute(); setDrawer(false); }));
   bindDev();

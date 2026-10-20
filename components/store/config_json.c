@@ -376,7 +376,7 @@ static const mex_dev_cfg_t *find_dev(const cfg_modbus_t *m, uint8_t id) {
 static bool p_modbus(jctx_t *c, const cJSON *o, cfg_modbus_t *m, const cfg_modbus_t *cur) {
     static const char *const allowed[] = {"devices", "port",   "poll_ms",       "timeout_ms",
                                           "retries", "gap_ms", "offline_after", NULL};
-    static const char *const dev_allowed[] = {"id", "name", "slave", "enabled", NULL};
+    static const char *const dev_allowed[] = {"id", "name", "slave", "enabled", "template_id", "display_mask", NULL};
     static const char *const port_allowed[] = {"baud", "parity", "stop", NULL};
     char p[PATH_SZ];
     if (!j_obj(c, o, "modbus") || !j_members(c, o, allowed, NULL, "modbus"))
@@ -408,10 +408,19 @@ static bool p_modbus(jctx_t *c, const cJSON *o, cfg_modbus_t *m, const cfg_modbu
                 dv->id = (uint8_t)id;
                 dv->slave = (uint8_t)(id + 1);
                 dv->enabled = true;
+                dv->display_mask = GW_CHANNEL_DISPLAY_DEFAULT;
                 store_strset(dv->name, sizeof(dv->name), "");
             }
+            if (!dv->template_id[0])
+                store_strset(dv->template_id, sizeof(dv->template_id), GW_DEFAULT_TEMPLATE_ID);
+            if (!j_text(c, MEMBER(d, "template_id"), dv->template_id, sizeof(dv->template_id),
+                        GW_TEMPLATE_ID_SZ - 1, jp(p, base, "template_id")))
+                return false;
+            if (!gw_device_template_find(dv->template_id))
+                return jerr(c, "range", "%s", jp(p, base, "template_id"));
             if (!j_text(c, MEMBER(d, "name"), dv->name, sizeof(dv->name), GW_DEV_NAME_SZ - 1, jp(p, base, "name")))
                 return false;
+            J_UINT(c, MEMBER(d, "display_mask"), UINT32_MAX, dv->display_mask, jp(p, base, "display_mask"));
             J_UINT(c, MEMBER(d, "slave"), 255, dv->slave, jp(p, base, "slave"));
             if (!j_bool(c, MEMBER(d, "enabled"), &dv->enabled, jp(p, base, "enabled")))
                 return false;
@@ -1123,6 +1132,8 @@ static void w_modbus(gw_jw_t *w, const cfg_modbus_t *m) {
         gw_jw_obj_open(w);
         gw_jw_kuint(w, "id", d->id);
         gw_jw_kstr(w, "name", d->name);
+        gw_jw_kstr(w, "template_id", d->template_id[0] ? d->template_id : GW_DEFAULT_TEMPLATE_ID);
+        gw_jw_kuint(w, "display_mask", d->display_mask);
         gw_jw_kuint(w, "slave", d->slave);
         gw_jw_kbool(w, "enabled", d->enabled);
         gw_jw_obj_close(w);

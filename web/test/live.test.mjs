@@ -1,7 +1,7 @@
 // Live model tests: WS snap delta merge, derived values, alarm list maintenance, live series buffer.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { applySnap, derive, fromRest, stageBits, equipment, applyAlarm, sortAlarms, alarmSummary, emptyLive } from '../src/live.js';
+import { applySnap, derive, fromRest, stageBits, equipment, applyAlarm, sortAlarms, alarmSummary, emptyLive, snapshotReady } from '../src/live.js';
 import { DevSeries, historyArrays, stageTotals, S_TEMP, S_ST } from '../src/series.js';
 import { backoffDelay } from '../src/ws.js';
 import { valid } from './helpers.mjs';
@@ -147,4 +147,55 @@ test('ws backoff: exponential, capped at 10 s, jittered ±20 %', () => {
     const d = backoffDelay(i % 12);
     assert.ok(d >= 400 && d <= 12000);
   }
+});
+
+
+test('unpublished and incomplete data never plots zero; a real completed zero measurement remains valid', () => {
+  const s = new DevSeries(100);
+  const partial = { known: true, on: true, seq: 0, regs: { 40036: 0, 40037: 0 }, coils: 0 };
+  s.add(1000, partial);
+  assert.ok(Number.isNaN(s.ring.val(0, 0)));
+  s.add(2000, { ...partial, seq: 1, regs: { 40036: 230 } });
+  assert.ok(Number.isNaN(s.ring.val(0, 1)));
+  s.add(3000, { ...partial, seq: 1 });
+  assert.equal(s.ring.val(0, 2), 0);
+  assert.equal(s.ring.val(1, 2), 0);
+});
+
+
+test('a seq-zero WS placeholder cannot seed measurements for later deltas', () => {
+  const init = applySnap(undefined, { ...FULL, seq: 0, r: { 40036: 0, 40037: 0 } }, 1).state;
+  assert.equal(init.known, false);
+  assert.deepEqual(init.regs, {});
+  const partial = applySnap(init, { ...FULL, seq: 1, full: false, r: { 40036: 0 } }, 2).state;
+  assert.equal(snapshotReady(partial), false);
+  const complete = applySnap(partial, { ...FULL, seq: 2, full: false, r: { 40037: 0 } }, 3).state;
+  assert.equal(snapshotReady(complete), true);
+});
+
+
+test('connected startup 0/0 with positive seq stays pending in REST, WS and chart until ready', () => {
+  const s = new DevSeries(100);
+  let st;
+  for (let seq = 1; seq <= 4; seq++) {
+    const m = { ...FULL, seq, ready: false, full: seq === 1,
+      r: seq === 1 ? { ...FULL.r, 40036: 0, 40037: 0 } : {} };
+    st = applySnap(st, m, seq * 1000).state;
+    assert.equal(st.on, true);
+    assert.equal(snapshotReady(st), false);
+    s.add(seq * 1000, st);
+    assert.ok(Number.isNaN(s.ring.val(S_TEMP, seq - 1)));
+  }
+  const pending = fromRest({ seq: 4, online: true, fresh: true, measurement_valid: false,
+    regs: { 40036: 0, 40037: 0 }, coils: 0, derived: null }, 4000);
+  assert.equal(snapshotReady(pending), false);
+  st = applySnap(st, { ...FULL, seq: 5, ready: true, full: false, r: { 40037: 480 } }, 5000).state;
+  assert.equal(snapshotReady(st), true);
+  s.add(5000, st);
+  assert.equal(s.ring.val(S_TEMP, 4), 0, 'real zero temperature with valid humidity');
+  assert.equal(s.ring.val(1, 4), 48);
+  st = applySnap(st, { ...FULL, seq: 6, ready: false, full: false, r: { 40037: 0 } }, 6000).state;
+  assert.equal(snapshotReady(st), false, 'reconnection resets readiness even if registers are present');
+  s.add(6000, st);
+  assert.ok(Number.isNaN(s.ring.val(S_TEMP, 5)));
 });

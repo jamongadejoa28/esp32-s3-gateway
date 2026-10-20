@@ -151,6 +151,9 @@ void history_sample(uint8_t dev, const mex_snapshot_t *s, bool fresh, bool any_a
  */
 esp_err_t history_factory_reset(void);
 
+/** Delete one device's RAM/file history through persist; sampling resumes without reboot. */
+esp_err_t history_clear(uint8_t dev);
+
 /** Request writing all pending slow records now (reboot/OTA). Non-blocking; use persist_flush(). */
 void history_flush_request(void);
 

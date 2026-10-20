@@ -1,5 +1,7 @@
 // Formatting: Intl numbers/dates in the UI language, register value display (scale ×10, disabled
 // sentinels, enum labels), durations and data age. Pure: no DOM access.
+import { displayDate } from './time_zone.js';
+export { setTimeZone } from './time_zone.js';
 import { t, locale, name } from './i18n/index.js';
 
 const nfCache = new Map();
@@ -13,7 +15,7 @@ function nf(dec) {
   return f;
 }
 
-export const DASH = '—';
+export const DASH = '--';
 const MINUS = '−';
 
 /** Number with fixed decimals; null/NaN -> "—". Negative values use a true minus sign. */
@@ -90,29 +92,30 @@ export function rangeText(reg) {
 
 const pad = (n, w = 2) => String(n).padStart(w, '0');
 
-/** "2026-10-19 14:03:22" in the browser's local time. */
+function dateParts(ms) {
+  const { date: d, utc } = displayDate(ms);
+  const get = (key) => d[`${utc ? 'getUTC' : 'get'}${key}`]();
+  return { year: get('FullYear'), month: get('Month') + 1, day: get('Date'), hour: get('Hours'), min: get('Minutes'), sec: get('Seconds') };
+}
+/** Gateway-configured time zone; invalid/unknown epochs remain explicit. */
 export function dateTime(ms, withSec = true) {
-  if (ms === null || ms === undefined) return DASH;
-  const d = new Date(ms);
-  const base = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  return withSec ? `${base}:${pad(d.getSeconds())}` : base;
+  if (ms === null || ms === undefined || !Number.isFinite(ms)) return DASH;
+  const d = dateParts(ms);
+  const base = `${d.year}-${pad(d.month)}-${pad(d.day)} ${pad(d.hour)}:${pad(d.min)}`;
+  return withSec ? `${base}:${pad(d.sec)}` : base;
 }
-
-/** "14:03:22" / "14:03". */
 export function clock(ms, withSec = true) {
-  if (ms === null || ms === undefined) return DASH;
-  const d = new Date(ms);
-  return withSec ? `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}` : `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  if (ms === null || ms === undefined || !Number.isFinite(ms)) return DASH;
+  const d = dateParts(ms);
+  return `${pad(d.hour)}:${pad(d.min)}${withSec ? `:${pad(d.sec)}` : ''}`;
 }
-
-/** Axis label for a tick at `ms` given the tick unit ('s' | 'm' | 'd'). */
 export function tickLabel(ms, unit) {
-  const d = new Date(ms);
+  const d = dateParts(ms);
   if (unit === 's') return clock(ms, true);
-  if (unit === 'd') return `${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  if (d.getHours() === 0 && d.getMinutes() === 0) return `${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  if (unit === 'd' || (d.hour === 0 && d.min === 0)) return `${pad(d.month)}-${pad(d.day)}`;
   return clock(ms, false);
 }
+export const logTime = (ms) => ms === null || ms === undefined ? t('time.before_sync') : dateTime(ms);
 
 /** Compact duration: "45 s", "12 min", "3 h 05 min", "2 d 4 h". */
 export function duration(sec) {

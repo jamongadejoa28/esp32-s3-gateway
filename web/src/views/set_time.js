@@ -3,6 +3,7 @@
 import { h, icon, setText } from '../dom.js';
 import { t } from '../i18n/index.js';
 import { get, put, post } from '../api.js';
+import { state, set, emit } from '../store.js';
 import { Form, panel, toast, toastErr } from '../ui.js';
 import * as fmt from '../fmt.js';
 
@@ -16,7 +17,7 @@ const TZ = [
 const HOST_RE = /^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$/;
 
 export function mount(el, scope, { admin }) {
-  const f = new Form({ readOnly: !admin, onSave: (v) => put('/config/time', v) });
+  const f = new Form({ readOnly: !admin, onSave: (v) => put('/config/time', v), onSaved: (m) => { fmt.setTimeZone(m.tz); state.timeConfig = m; emit('clock', Date.now()); paintClock(); } });
   const ntp = f.toggle('ntp.enabled', t('time.ntp'));
   const s1 = h('input.inp', { type: 'text', 'aria-label': t('time.server1'), spellcheck: 'false' });
   const s2 = h('input.inp', { type: 'text', 'aria-label': t('time.server2'), spellcheck: 'false' });
@@ -69,7 +70,12 @@ export function mount(el, scope, { admin }) {
     const t0 = Date.now();
     const i = await get('/system/info');
     const t1 = Date.now();
+    if (scope.dead) return;
     offset = i.time_ms === null ? null : i.time_ms - (t0 + t1) / 2;
+    state.srvOffset = offset ?? 0;
+    set('srvValid', i.time_valid && offset !== null);
+    set('info', i);
+    emit('clock', t1);
     setText(validT, i.time_valid ? t('yes') : t('time.invalid'));
     paintClock();
   }
@@ -81,5 +87,5 @@ export function mount(el, scope, { admin }) {
   }
   scope.every(1000, paintClock);
   refreshInfo().catch(() => {});
-  get('/config/time').then((m) => { if (!scope.dead) f.load(m); }).catch(toastErr);
+  get('/config/time').then((m) => { if (!scope.dead) { f.load(m); fmt.setTimeZone(m.tz); state.timeConfig = m; paintClock(); } }).catch(toastErr);
 }

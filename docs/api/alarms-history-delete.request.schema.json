@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/alarms-history-delete.request.schema.json",
+  "title": "DELETE /alarms/history",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "const": "one"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4294967295
+        },
+        "dev": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "sev": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        }
+      },
+      "required": [
+        "mode",
+        "seq"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "const": "range"
+        },
+        "from": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4294967295000
+        },
+        "to": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4294967295000
+        },
+        "dev": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "sev": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        }
+      },
+      "required": [
+        "mode",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "const": "all"
+        },
+        "dev": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "sev": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "additionalProperties": false
+    }
+  ]
+}

@@ -13,6 +13,7 @@
 #include "gw_core/gw_b64.h"
 #include "gw_core/gw_crypto.h"
 #include "gw_core/gw_defs.h"
+#include "gw_core/device_templates.h"
 #include "gw_core/gw_drbg.h"
 #include "gw_core/gw_err.h"
 #include "gw_core/gw_events.h"

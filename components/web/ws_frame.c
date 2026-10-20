@@ -29,7 +29,7 @@ static bool prev_raw(const ws_snap_state_t *st, uint16_t addr, int32_t *raw) {
 
 int ws_frame_snap(ws_snap_state_t *st, gw_jw_t *w, uint8_t dev, uint32_t seq, int64_t ts_ms, bool online,
                   const uint16_t *addr, const int32_t *raw, size_t n, uint32_t coils, bool force_full,
-                  uint64_t now_mono_ms, uint32_t full_period_s) {
+                  uint64_t now_mono_ms, uint32_t full_period_s, bool measurement_valid) {
     if (!st || !w || (n && (!addr || !raw))) {
         return GW_JW_E_STATE;
     }
@@ -45,6 +45,7 @@ int ws_frame_snap(ws_snap_state_t *st, gw_jw_t *w, uint8_t dev, uint32_t seq, in
     gw_jw_kuint(w, "seq", seq);
     opt_ms(w, "ts", ts_ms);
     gw_jw_kbool(w, "on", online);
+    gw_jw_kbool(w, "ready", measurement_valid);
     gw_jw_kbool(w, "full", full);
     gw_jw_kobj(w, "r");
     for (size_t i = 0; i < n; i++) {

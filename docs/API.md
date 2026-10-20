@@ -112,6 +112,7 @@ Role: `—` public, `cookie` = any valid session. CSRF ✓ = `X-CSRF-Token` + Or
 | POST | /auth/logout | cookie | ✓ | — | 204 | — |
 | GET | /session | — (cookie) | | — | 200 / 401 | session.response / empty |
 | POST | /auth/password | cookie | ✓ | auth-password.request | 204 | — |
+| GET | /meta/device-templates | viewer | | — | 200 | device-templates.response |
 | GET | /meta/registers | viewer | | — | 200 | meta-registers.response |
 | GET | /meta/alarms | viewer | | — | 200 | meta-alarms.response |
 | GET | /system/info | viewer | | — | 200 | system-info.response |
@@ -121,12 +122,14 @@ Role: `—` public, `cookie` = any valid session. CSRF ✓ = `X-CSRF-Token` + Or
 | PUT | /devices/{d}/registers/{addr} | operator | ✓ | register-write.request | 200/202/409 | write-result.response |
 | POST | /devices/{d}/run | operator | ✓ | device-run.request | 200/202/409 | write-result.response |
 | GET | /devices/{d}/commands/{id} | operator | | — | 200 | command.response |
+| DELETE | /devices/{d}/history | admin | ✓ | — | 204 | — |
 | GET | /devices/{d}/history | viewer | | — | 200 | history.response |
 | GET | /devices/{d}/history.csv | viewer | | — | 200 | CSV §4.6 |
 | GET | /devices/{d}/stats | viewer | | — | 200 | device-stats.response |
 | POST | /devices/{d}/stats/reset | admin | ✓ | — | 204 | — |
 | GET | /alarms/active | viewer | | — | 200 | alarms-active.response |
 | POST | /alarms/ack | operator | ✓ | alarms-ack.request | 204 | — |
+| DELETE | /alarms/history | admin | ✓ | alarms-history-delete.request | 200 | alarms-history-delete.response |
 | GET | /alarms/history | viewer | | — | 200 | alarms-history.response |
 | GET | /alarms/history.csv | viewer | | — | 200 | CSV §4.7 |
 | GET / PUT | /config/rules | viewer / admin | PUT ✓ | config-rules | 200 | config-rules |
@@ -237,6 +240,71 @@ Arrays shortened in this example.
 }
 ```
 
+**GET /meta/device-templates** — supported device templates, generated from
+`components/gw_core/device_templates.def`. Each entry includes `id`, `name`, `vendor`, `category`,
+`description`, `serial` defaults and ordered `channels` (`id`, `key`, `ko`, `en`, `access`, `source`,
+`addr`, `scale`, `unit`). `addr` is null for aggregate/unbound channels. The MEX150 template keeps
+the IA gateway's original 22 channel IDs and access flags. `disabled` channels have no live or write
+support; `conf_only` channels keep the reference template's configuration-only marker and have no
+implemented device binding. The UI does not invent live readings or controls for either.
+Shared port settings are not silently changed when selecting a template.
+
+Channel list shortened below; the endpoint returns all 22 MEX150 channels.
+
+<!-- schema: device-templates.response -->
+```json
+[
+  {
+    "id": "mex150",
+    "name": "MST.MEX-150",
+    "vendor": "MST",
+    "category": "HVAC.AIR.1",
+    "description": "HVAC Air-Cooled",
+    "serial": {
+      "baud": 9600,
+      "data_bits": 8,
+      "parity": "N",
+      "stop": 1
+    },
+    "channels": [
+      {
+        "id": 0,
+        "key": "temperature",
+        "ko": "온도",
+        "en": "Temperature",
+        "access": "ro",
+        "source": "reg",
+        "addr": 40036,
+        "scale": 10,
+        "unit": "°C"
+      },
+      {
+        "id": 3,
+        "key": "air_volume",
+        "ko": "풍량",
+        "en": "Air volume",
+        "access": "disabled",
+        "source": "none",
+        "addr": null,
+        "scale": 1,
+        "unit": ""
+      },
+      {
+        "id": 20,
+        "key": "outdoor_set_temperature",
+        "ko": "외기설정온도",
+        "en": "Outdoor temperature setpoint",
+        "access": "conf_only",
+        "source": "none",
+        "addr": null,
+        "scale": 10,
+        "unit": "°C"
+      }
+    ]
+  }
+]
+```
+
 **GET /meta/alarms** — alarm catalog (`alarm_catalog.def`) with effective severities.
 `source`: `coil:<n>`, `bit:<addr>.<bit>`, `comm`, `rule:<id>`.
 
@@ -289,7 +357,7 @@ SNMP engine boots counter, which must never decrease).
 
 <!-- schema: devices.response -->
 ```json
-[{"id": 0, "name": "MEX150", "slave": 1, "enabled": true, "online": true, "last_ms": 1792371600000, "seq": 1234}]
+[{"id": 0, "name": "MEX150", "template_id": "mex150", "display_mask": 4194303, "slave": 1, "enabled": true, "online": true, "last_ms": 1792371600000, "seq": 1234}]
 ```
 
 **GET /devices/{d}/live** — latest snapshot. `regs` contains every register of `regmap.def`
@@ -525,11 +593,14 @@ the change is still scheduled (before `apply_in_s` elapsed): reconnect on the ne
 ```
 
 **/config/modbus** (GET viewer, PUT admin). Devices are matched by `id`; `slave` unique among enabled
-devices. Applied at the next poll cycle.
+devices. Applied at the next poll cycle. `template_id` selects a supported catalog entry; an unknown
+or empty ID is rejected. Missing IDs in existing configurations/legacy requests retain the saved
+ID (default `mex150`). Device registration remains admin-only and devices are gateway-wide;
+viewer/operator/admin read/control permissions are unchanged.
 
 <!-- schema: config-modbus.response -->
 ```json
-{"devices": [{"id": 0, "name": "MEX150", "slave": 1, "enabled": true}],
+{"devices": [{"id": 0, "name": "MEX150", "template_id": "mex150", "display_mask": 4194303, "slave": 1, "enabled": true}],
  "port": {"baud": 9600, "parity": "N", "stop": 1},
  "poll_ms": 1000, "timeout_ms": 300, "retries": 1, "gap_ms": 5, "offline_after": 3}
 ```
@@ -731,7 +802,7 @@ communities, SNMP keys).
  "network": {"eth": {"mode": "static", "ip": "192.168.10.150", "mask": "255.255.255.0", "gw": "192.168.10.1", "dns1": "192.168.10.1", "dns2": ""},
              "hostname": "mestio-gw-3456",
              "ap": {"fallback": true, "ssid": "MESTIO-GW-3456", "channel": 6, "idle_min": 15, "fallback_after_s": 120}},
- "modbus": {"devices": [{"id": 0, "name": "MEX150", "slave": 1, "enabled": true}], "port": {"baud": 9600, "parity": "N", "stop": 1},
+ "modbus": {"devices": [{"id": 0, "name": "MEX150", "template_id": "mex150", "display_mask": 4194303, "slave": 1, "enabled": true}], "port": {"baud": 9600, "parity": "N", "stop": 1},
             "poll_ms": 1000, "timeout_ms": 300, "retries": 1, "gap_ms": 5, "offline_after": 3},
  "alarms": {"debounce_raise": 2, "debounce_clear": 3, "sev_override": {}, "rules": []},
  "snmp": {"enabled": false, "v1": false, "v2c": false, "auth_traps": false,
@@ -774,7 +845,7 @@ including `admin`/`mestio150!` (must change), and reboots. The factory AP PSK is
 `comm_lost` `comm_restored` `boot` `time_set` `net_link` `ap` `ota` `reboot` `net_provisional`
 `health` (system) and `login_ok` `login_fail` `lockout` `logout` `password` `user_add` `user_mod`
 `user_del` `config_change` `reg_write` `ota_upload` `rollback` `reboot_req` `factory_reset`
-`config_import` `time_sync` `alarm_ack_req` `stats_reset` `snmp_test` `user_target` (audit). An
+`config_import` `time_sync` `alarm_ack_req` `stats_reset` `snmp_test` `history_delete`, `user_target` (audit). An
 account change by an admin is logged as a pair: the action record (`user_add` `user_mod` `user_del`,
 or `password` with `extra` 1) carries the actor in `user`, and the `user_target` record that follows
 it carries the affected account in `user`, the action's type number in `code`, its `value` and its
@@ -881,3 +952,47 @@ New message types may be added within v1 (§1 Versioning); clients ignore unknow
 `tests/test_api_contract.py` (stream G/D) validates: every example in this file against its schema,
 every schema against the 2020-12 meta-schema, and the mock server's responses for every endpoint.
 The firmware's JSON output for the same endpoints is checked in Phase 2 against the same schemas.
+
+
+### Device presentation and history maintenance
+
+Devices may include `display_mask` (bit = template channel ID, default 0x3fffff). This controls
+presentation only; it does not change polling, alarm detection, permissions or the register map.
+Device management updates `devices` only; communication settings update shared port/timing fields only.
+Cards show normal channels and expand settings below. Live charts open in a device-scoped dialog
+with a device name and slave address. Measurements are shown only after a complete fresh snapshot;
+offline/stale/incomplete measurements are `--`, and the live charts are hidden until data is ready.
+WebSocket streams do not publish uninitialized (seq 0) snapshots. Transport `online` / `snap.on`
+and measurement validity are separate: REST `measurement_valid` / WS `snap.ready` is false while
+the initial 0/0 temperature/humidity pair is unconfirmed, even when seq is positive and the data is fresh.
+The MEX150 startup policy waits until either measurement leaves zero once per connection; readiness
+resets on device/line reconfiguration or a failed poll (including a brief outage below the offline
+threshold). This is a gateway policy, not a
+controller-provided readiness bit: an actual 0/0 pair at initial connection also remains pending.
+Once ready, subsequent zero readings (including 0/0) remain valid until disconnection. While pending,
+REST `derived` is null; raw `regs` remain available for diagnosis, UI readings are `--`, chart/history
+samples are gaps, and temperature/humidity threshold rules pause. SNMP validity is false.
+
+`DELETE /devices/{d}/history` clears that device's RAM measurements, pending aggregates, daily
+files and cached rollups. Sampling resumes without reboot. It does not remove device configuration.
+`DELETE /alarms/history` deletes one alarm-history record by `seq`, or records in an inclusive UTC
+`from`/`to` millisecond range, or all alarm-history records. Optional `dev` and `sev` scope every mode.
+It preserves other event types, audit records and active alarms. Deletion is fenced at the latest sequence
+at acceptance, so newer appends survive. Persistence runs in the existing single writer task.
+Both endpoints require admin + CSRF; destructive actions in the UI name their scope and require confirmation.
+
+<!-- schema: alarms-history-delete.request -->
+```json
+{"mode":"range","dev":0,"from":1792371600000,"to":1792457999000}
+```
+<!-- schema: alarms-history-delete.response -->
+```json
+{"deleted":12}
+```
+
+Alarm acknowledgment retains operator/admin permissions. Active alarms clear automatically on device
+recovery, matching the referenced integrated monitoring program; deleting history never changes the
+current equipment/alarm state. All visible dates and chart axes use the configured gateway POSIX TZ,
+including daylight-saving transitions. Synchronizing the clock immediately updates the shared UI clock.
+A historical record with no timestamp is labelled “Before clock synchronization”; its original time cannot
+be reconstructed from the legacy format, and the UI does not substitute the current time.

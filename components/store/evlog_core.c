@@ -5,6 +5,7 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include <stdio.h>
+#include <errno.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -83,6 +84,8 @@ const char *evlog_type_name(uint8_t type) {
         return "stats_reset";
     case AUD_SNMP_TEST:
         return "snmp_test";
+    case AUD_HISTORY_DELETE:
+        return "history_delete";
     case AUD_USER_TARGET:
         return "user_target";
     default:
@@ -283,4 +286,72 @@ size_t evlog_core_query(const evlog_files_t *f, const evlog_rec_t *ram, size_t n
     if (q.more && q.count && next)
         *next = q.out[q.count - 1].seq;
     return q.count;
+}
+
+bool evlog_delete_match(const evlog_delete_t *f, const evlog_rec_t *r) {
+    return f && r && r->type >= EVT_ALARM_RAISE && r->type <= EVT_ALARM_ACK && r->seq <= f->through_seq &&
+           (!f->seq || r->seq == f->seq) && (f->dev < 0 || r->dev == (uint16_t)f->dev) &&
+           (f->min_sev < 0 || r->sev >= (uint8_t)f->min_sev) &&
+           (!f->from_s || (r->ts && r->ts >= f->from_s)) && (!f->to_s || (r->ts && r->ts <= f->to_s));
+}
+esp_err_t evlog_files_delete_alarms(evlog_files_t *files, const evlog_delete_t *filter, uint32_t *deleted) {
+    *deleted = 0;
+    for (unsigned i = 0; i < 2; i++) {
+        FILE *src = fopen(files->path[i], "rb");
+        if (!src) {
+            if (errno != ENOENT)
+                return ESP_FAIL;
+            continue;
+        }
+        evlog_rec_t probe;
+        bool match = false;
+        while (fread(&probe, sizeof(probe), 1, src) == 1) {
+            if (evlog_delete_match(filter, &probe)) {
+                match = true;
+                break;
+            }
+        }
+        if (ferror(src)) {
+            fclose(src);
+            return ESP_FAIL;
+        }
+        if (!match) {
+            fclose(src);
+            continue;
+        }
+        rewind(src);
+        char temp[EVLOG_PATH_SZ + 8];
+        snprintf(temp, sizeof(temp), "%s.delete", files->path[i]);
+        FILE *dst = fopen(temp, "wb");
+        if (!dst) {
+            fclose(src);
+            return ESP_FAIL;
+        }
+        evlog_rec_t r;
+        uint32_t kept = 0, removed = 0;
+        bool ok = true;
+        while (fread(&r, sizeof(r), 1, src) == 1) {
+            if (evlog_delete_match(filter, &r))
+                removed++;
+            else if (fwrite(&r, sizeof(r), 1, dst) != 1) {
+                ok = false;
+                break;
+            } else
+                kept++;
+        }
+        if (ferror(src))
+            ok = false;
+        fclose(src);
+        if (fflush(dst) != 0 || fsync(fileno(dst)) != 0)
+            ok = false;
+        if (fclose(dst) != 0)
+            ok = false;
+        if (!ok || rename(temp, files->path[i]) != 0) {
+            remove(temp);
+            return ESP_FAIL;
+        }
+        files->count[i] = kept;
+        *deleted += removed;
+    }
+    return ESP_OK;
 }

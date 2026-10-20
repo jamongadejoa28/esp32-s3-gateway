@@ -234,10 +234,50 @@ static void test_rotation_recovery(void) {
     CHECK_EQ(h.count[0] + h.count[1], 0);
 }
 
+static void test_alarm_history_deletion(void) {
+    evlog_files_t f;
+    CHECK_EQ(evlog_files_open(&f, g_dir, "deletion"), ESP_OK);
+    append_range(&f, 1, 14);
+    evlog_delete_t filter = {.seq = 3, .through_seq = 12, .dev = -1, .min_sev = -1};
+    uint32_t deleted = 99;
+    CHECK_EQ(evlog_files_delete_alarms(&f, &filter, &deleted), ESP_OK);
+    CHECK_EQ(deleted, 1);
+    CHECK_EQ(evlog_files_delete_alarms(&f, &filter, &deleted), ESP_OK);
+    CHECK_EQ(deleted, 0); /* idempotent, no unrelated rewrites */
+    filter.seq = 0;
+    filter.from_s = 1792371605u;
+    filter.to_s = 1792371609u;
+    CHECK_EQ(evlog_files_delete_alarms(&f, &filter, &deleted), ESP_OK);
+    CHECK_EQ(deleted, 3);
+    filter.from_s = filter.to_s = 0;
+    CHECK_EQ(evlog_files_delete_alarms(&f, &filter, &deleted), ESP_OK);
+    CHECK_EQ(deleted, 2); /* 1,11: alarm 13 is newer than acceptance fence */
+    CHECK_EQ(f.last_seq, 14);
+    CHECK_EQ(evlog_files_open(&f, g_dir, "deletion"), ESP_OK);
+    uint32_t next;
+    size_t n = evlog_core_query(&f, NULL, 0, 0, 100, NULL, g_out, &next);
+    CHECK_EQ(n, 8);
+    for (size_t i = 0; i < n; i++)
+        CHECK(g_out[i].seq == 13 || g_out[i].type == EVT_COMM_LOST);
+    evlog_rec_t r = rec(13);
+    filter.through_seq = 14;
+    filter.dev = 2;
+    CHECK(!evlog_delete_match(&filter, &r));
+    filter.dev = 1;
+    filter.min_sev = 3;
+    CHECK(!evlog_delete_match(&filter, &r));
+    filter.min_sev = -1;
+    CHECK(evlog_delete_match(&filter, &r));
+    r.ts = 0;
+    filter.from_s = 1;
+    CHECK(!evlog_delete_match(&filter, &r)); /* unknown clock is not in a dated range */
+}
+
 int main(int argc, char **argv) {
     if (argc < 2)
         return 2;
     snprintf(g_dir, sizeof(g_dir), "%s", argv[1]);
+    test_alarm_history_deletion();
     test_names();
     test_basic_and_paging();
     test_ram_merge();

@@ -54,9 +54,10 @@ static_assert(MEX_REG_COUNT <= WS_SNAP_MAX_REGS, "snap register capacity");
  * Keep WS_MBOX_RESERVE slots free for those so broadcasts never starve them. */
 #define WS_MBOX_RESERVE 3
 static_assert(CONFIG_LWIP_UDP_RECVMBOX_SIZE > WS_MBOX_RESERVE + 1, "control mailbox too small");
-#define WS_INFLIGHT_MAX                                                                                       \
-    (WS_FRAME_POOL < CONFIG_LWIP_UDP_RECVMBOX_SIZE - WS_MBOX_RESERVE ? WS_FRAME_POOL                         \
-                                                                       : CONFIG_LWIP_UDP_RECVMBOX_SIZE - WS_MBOX_RESERVE)
+#define WS_INFLIGHT_MAX                                                                                      \
+    (WS_FRAME_POOL < CONFIG_LWIP_UDP_RECVMBOX_SIZE - WS_MBOX_RESERVE                                         \
+         ? WS_FRAME_POOL                                                                                     \
+         : CONFIG_LWIP_UDP_RECVMBOX_SIZE - WS_MBOX_RESERVE)
 
 typedef struct {
     int fd; /* -1 = free */
@@ -69,8 +70,8 @@ typedef struct {
 
 typedef struct {
     bool used;
-    int target;       /* fd, TARGET_ALL or TARGET_ALL_CLOSE */
-    auth_sid_t sid;   /* fd targets: only a client of this session (0 = any) */
+    int target;     /* fd, TARGET_ALL or TARGET_ALL_CLOSE */
+    auth_sid_t sid; /* fd targets: only a client of this session (0 = any) */
     bool close_after;
     uint32_t topics;
     size_t len;
@@ -247,7 +248,8 @@ static void send_work(void *arg) {
                 const bool skippable = !b->close_after && !(b->topics & ~(uint32_t)WS_SKIPPABLE_TOPICS);
                 if (!skippable || now - since >= WS_STALL_DROP_MS) {
                     /* No bye/close frame: it could only block on the full buffer as well. */
-                    ESP_LOGW(TAG, "fd %d not draining for %u ms: dropping client", c->fd, (unsigned)(now - since));
+                    ESP_LOGW(TAG, "fd %d not draining for %u ms: dropping client", c->fd,
+                             (unsigned)(now - since));
                     forget_fd(c->fd);
                     web_close_fd(c->fd);
                 }
@@ -634,7 +636,7 @@ static void on_snapshot(const gw_evt_snapshot_t *ev) {
         return;
     }
     mex_snapshot_t s;
-    if (!mex_service_snapshot(ev->dev, &s)) {
+    if (!mex_service_snapshot(ev->dev, &s) || !s.seq) {
         return;
     }
     uint16_t addr[WS_SNAP_MAX_REGS];
@@ -658,7 +660,7 @@ static void on_snapshot(const gw_evt_snapshot_t *ev) {
     gw_jw_t w;
     gw_jw_init_fixed(&w, b->data, WS_FRAME_MAX);
     int rc = ws_frame_snap(&s_snap[ev->dev], &w, ev->dev, s.seq, s.wall_ms, s.online, addr, raw, n, s.coils,
-                           force, gw_time_mono_ms(), WS_FULL_SNAP_S);
+                           force, gw_time_mono_ms(), WS_FULL_SNAP_S, s.measurement_valid);
     if (rc != GW_JW_OK || gw_jw_finish(&w) != GW_JW_OK) {
         s_snap[ev->dev].valid = false;
         pool_put(b);
@@ -834,6 +836,9 @@ static void on_event(void *arg, esp_event_base_t base, int32_t id, void *data) {
         break;
     case GW_EVT_CONFIG_CHANGED: {
         const gw_evt_config_t *ev = data;
+        if (ev->section == CFG_SEC_MODBUS) {
+            __atomic_or_fetch(&s_full_req, (1u << GW_MAX_DEVICES) - 1u, __ATOMIC_SEQ_CST);
+        }
         if (ev->section == CFG_SEC_SECURITY) {
             s_ip_recheck = true;
         }
@@ -882,8 +887,9 @@ esp_err_t ws_hub_init(httpd_handle_t server) {
         return err;
     }
     s_hd = server;
-    static const int32_t ids[] = {GW_EVT_SNAPSHOT, GW_EVT_ALARM,  GW_EVT_WRITE_RESULT, GW_EVT_COMM,
-                                  GW_EVT_SYS_TICK, GW_EVT_SESSION, GW_EVT_REBOOT,      GW_EVT_CONFIG_CHANGED};
+    static const int32_t ids[] = {GW_EVT_SNAPSHOT, GW_EVT_ALARM,         GW_EVT_WRITE_RESULT,
+                                  GW_EVT_COMM,     GW_EVT_SYS_TICK,      GW_EVT_SESSION,
+                                  GW_EVT_REBOOT,   GW_EVT_CONFIG_CHANGED};
     static_assert(sizeof(ids) / sizeof(ids[0]) == sizeof(s_inst) / sizeof(s_inst[0]), "instances");
     for (size_t i = 0; i < sizeof(ids) / sizeof(ids[0]); i++) {
         if (s_inst[i]) {
@@ -899,8 +905,9 @@ esp_err_t ws_hub_init(httpd_handle_t server) {
 }
 
 void ws_hub_stop(void) {
-    static const int32_t ids[] = {GW_EVT_SNAPSHOT, GW_EVT_ALARM,  GW_EVT_WRITE_RESULT, GW_EVT_COMM,
-                                  GW_EVT_SYS_TICK, GW_EVT_SESSION, GW_EVT_REBOOT,      GW_EVT_CONFIG_CHANGED};
+    static const int32_t ids[] = {GW_EVT_SNAPSHOT, GW_EVT_ALARM,         GW_EVT_WRITE_RESULT,
+                                  GW_EVT_COMM,     GW_EVT_SYS_TICK,      GW_EVT_SESSION,
+                                  GW_EVT_REBOOT,   GW_EVT_CONFIG_CHANGED};
     for (size_t i = 0; i < sizeof(ids) / sizeof(ids[0]); i++) {
         if (s_inst[i]) {
             (void)gw_events_unregister(ids[i], s_inst[i]);

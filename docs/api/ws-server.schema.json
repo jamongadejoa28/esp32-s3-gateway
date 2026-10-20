@@ -80,6 +80,10 @@
         },
         "c": {
           "$ref": "common.schema.json#/$defs/u32"
+        },
+        "ready": {
+          "type": "boolean",
+          "description": "Measurement readiness, independent of transport online."
         }
       },
       "additionalProperties": false,

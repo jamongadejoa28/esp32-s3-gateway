@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mestio.invalid/gw/api/v1/device-templates.response.schema.json",
+  "title": "GET /meta/device-templates",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 15
+      },
+      "name": {
+        "type": "string"
+      },
+      "vendor": {
+        "type": "string"
+      },
+      "category": {
+        "type": "string"
+      },
+      "description": {
+        "type": "string"
+      },
+      "serial": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "baud": {
+            "type": "integer"
+          },
+          "data_bits": {
+            "type": "integer"
+          },
+          "parity": {
+            "type": "string"
+          },
+          "stop": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "baud",
+          "data_bits",
+          "parity",
+          "stop"
+        ]
+      },
+      "channels": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "key": {
+              "type": "string"
+            },
+            "ko": {
+              "type": "string"
+            },
+            "en": {
+              "type": "string"
+            },
+            "access": {
+              "enum": [
+                "ro",
+                "rw",
+                "rw_conf",
+                "disabled",
+                "conf_only"
+              ]
+            },
+            "source": {
+              "enum": [
+                "reg",
+                "mode",
+                "outputs",
+                "alarms",
+                "none"
+              ]
+            },
+            "addr": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 40001,
+              "maximum": 49999
+            },
+            "scale": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "unit": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "key",
+            "ko",
+            "en",
+            "access",
+            "source",
+            "addr",
+            "scale",
+            "unit"
+          ]
+        }
+      }
+    },
+    "required": [
+      "id",
+      "name",
+      "vendor",
+      "category",
+      "description",
+      "serial",
+      "channels"
+    ]
+  }
+}

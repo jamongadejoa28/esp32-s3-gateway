@@ -8,6 +8,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #include "gw_core/gw_err.h"
@@ -60,6 +61,11 @@ esp_err_t persist_submit(persist_fn_t fn, void *arg, uint32_t timeout_ms);
  * (reboot/OTA/factory reset). Not from the persist or gw_evt task. ESP_ERR_TIMEOUT on timeout.
  */
 esp_err_t persist_flush(uint32_t timeout_ms);
+
+/** Run a one-shot writer with a private copy of data, copying results back only on completion.
+ * Timed-out callers never leave a stack pointer with the worker. Not from gw_evt. */
+typedef esp_err_t (*persist_result_fn_t)(void *data);
+esp_err_t persist_run(persist_result_fn_t fn, void *data, size_t size, uint32_t timeout_ms);
 
 /** True while called from the persist task. */
 bool persist_in_task(void);

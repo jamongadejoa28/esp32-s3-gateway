@@ -27,6 +27,7 @@ static void snap_init(mex_snapshot_t *s) {
     memset(s, 0, sizeof(*s));
     s->online = true;
     s->slow_valid = true;
+    s->measurement_valid = true;
     s->mono_ms = 1;
     s->seq = 1;
     s->regs[36] = 250;
@@ -90,7 +91,8 @@ static void test_catalog(void) {
     CHECK_EQ(id, ALM_high_temp);
     CHECK(alm_key_parse("0:rule_3", &dev, &id));
     CHECK_EQ(id, ALM_rule_3);
-    static const char *const bad[] = {"4:leak", "x:leak", "0leak", "0:", "0:nope", "", "10:leak", ":leak", "0:leak "};
+    static const char *const bad[] = {"4:leak", "x:leak",  "0leak", "0:",     "0:nope",
+                                      "",       "10:leak", ":leak", "0:leak "};
     for (size_t i = 0; i < sizeof(bad) / sizeof(bad[0]); i++)
         CHECK(!alm_key_parse(bad[i], &dev, &id));
     CHECK(!alm_key_parse(NULL, &dev, &id));
@@ -98,8 +100,8 @@ static void test_catalog(void) {
     CHECK_STR(key, "");
 }
 
-static void rule(cfg_alarms_t *a, uint8_t id, uint8_t dev, uint16_t addr, uint8_t op, int32_t thr, int32_t hyst,
-                 uint16_t delay, uint8_t sev) {
+static void rule(cfg_alarms_t *a, uint8_t id, uint8_t dev, uint16_t addr, uint8_t op, int32_t thr,
+                 int32_t hyst, uint16_t delay, uint8_t sev) {
     cfg_rule_t *r = &a->rules[a->n_rules++];
     memset(r, 0, sizeof(*r));
     r->id = id;
@@ -127,7 +129,7 @@ static void test_params(void) {
     a.n_sev_override = 3;
     a.sev_override[0] = (cfg_sev_override_t){127, ALM_SEV_CRITICAL};
     a.sev_override[1] = (cfg_sev_override_t){401, ALM_SEV_INFO}; /* rule: ignored */
-    a.sev_override[2] = (cfg_sev_override_t){123, 9};             /* invalid sev: ignored */
+    a.sev_override[2] = (cfg_sev_override_t){123, 9};            /* invalid sev: ignored */
     rule(&a, 3, 0, 40036, CFG_OP_GT, 280, 10, 0, ALM_SEV_MINOR);
     rule(&a, 9, 0, 40036, CFG_OP_GT, 280, 10, 0, ALM_SEV_MINOR); /* no catalog entry: no severity */
     alm_params_from_config(&a, &p);
@@ -305,10 +307,10 @@ static void test_rules(void) {
     memset(&a, 0, sizeof(a));
     a.debounce_raise = 2;
     a.debounce_clear = 3;
-    rule(&a, 1, 0, 40036, CFG_OP_GT, 280, 10, 5, 2);  /* temp > 28.0 for 5 s, clear <= 27.0 */
-    rule(&a, 2, 0, 40037, CFG_OP_LT, 300, 20, 0, 1);  /* hum < 30.0 immediately, clear >= 32.0 */
-    rule(&a, 3, 0, 40027, CFG_OP_GT, 290, 0, 0, 3);   /* slow-group register */
-    rule(&a, 4, 1, 40036, CFG_OP_GT, 0, 0, 0, 2);     /* device 1 */
+    rule(&a, 1, 0, 40036, CFG_OP_GT, 280, 10, 5, 2); /* temp > 28.0 for 5 s, clear <= 27.0 */
+    rule(&a, 2, 0, 40037, CFG_OP_LT, 300, 20, 0, 1); /* hum < 30.0 immediately, clear >= 32.0 */
+    rule(&a, 3, 0, 40027, CFG_OP_GT, 290, 0, 0, 3);  /* slow-group register */
+    rule(&a, 4, 1, 40036, CFG_OP_GT, 0, 0, 0, 2);    /* device 1 */
     alm_params_t p;
     alm_params_from_config(&a, &p);
     g_ntr = 0;
@@ -410,9 +412,9 @@ static void test_ack_and_listing(void) {
     alm_engine_feed_snapshot(&g_e, 0, &s, 100);
     set_coil(&s, 17, true); /* blower: major */
     alm_engine_feed_snapshot(&g_e, 0, &s, 200);
-    set_coil(&s, 25, true); /* drain: critical by override */
+    set_coil(&s, 25, true);                     /* drain: critical by override */
     alm_engine_feed_snapshot(&g_e, 2, &s, 300); /* dev 2 raises supply, blower, drain at 300 */
-    alm_engine_feed_comm(&g_e, 0, false, 50); /* comm_lost major, oldest */
+    alm_engine_feed_comm(&g_e, 0, false, 50);   /* comm_lost major, oldest */
     alm_active_t act[16];
     size_t n = alm_engine_active(&g_e, act, 16);
     CHECK_EQ(n, 6);
@@ -463,7 +465,8 @@ static void test_ack_and_listing(void) {
             CHECK(!act[i].acked);
             CHECK_STR(act[i].ack_by, "");
         }
-    CHECK_EQ(alm_engine_mask(&g_e, 2), (1u << ALM_supply_fault) | (1u << ALM_blower_fault) | (1u << ALM_drain_fault));
+    CHECK_EQ(alm_engine_mask(&g_e, 2),
+             (1u << ALM_supply_fault) | (1u << ALM_blower_fault) | (1u << ALM_drain_fault));
     CHECK_EQ(alm_engine_mask(&g_e, 4), 0);
     /* every transition carried the effective severity */
     for (int i = 0; i < g_ntr; i++)
@@ -548,6 +551,29 @@ static void test_sample_fresh(void) {
     CHECK_EQ(count_type(ALM_EV_RAISE, ALM_rule_1), 0);
 }
 
+static void test_pending_measurement_rules(void) {
+    cfg_alarms_t a = {0};
+    rule(&a, 1, 0, 40036, CFG_OP_LT, 50, 10, 0, 2);
+    rule(&a, 2, 0, 40037, CFG_OP_LT, 300, 20, 0, 1);
+    alm_params_t p;
+    alm_params_from_config(&a, &p);
+    g_ntr = 0;
+    alm_engine_init(&g_e, &p, on_emit, (void *)0x1234);
+    alm_engine_set_enabled(&g_e, 0, true, 0);
+    mex_snapshot_t s;
+    snap_init(&s);
+    s.measurement_valid = false;
+    s.regs[36] = s.regs[37] = 0;
+    uint64_t t = 0;
+    for (int i = 0; i < 10; i++)
+        tickr(0, &s, true, &t);
+    CHECK_EQ(g_ntr, 0); /* connected + fresh does not make startup 0/0 a real measurement */
+    s.measurement_valid = true;
+    tickr(0, &s, true, &t);
+    CHECK_EQ(count_type(ALM_EV_RAISE, ALM_rule_1), 1);
+    CHECK_EQ(count_type(ALM_EV_RAISE, ALM_rule_2), 1);
+}
+
 int main(void) {
     test_catalog();
     test_params();
@@ -556,5 +582,6 @@ int main(void) {
     test_rules();
     test_sample_fresh();
     test_ack_and_listing();
+    test_pending_measurement_rules();
     return BT_DONE();
 }

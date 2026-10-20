@@ -54,7 +54,7 @@ static void live_regs(gw_jw_t *w, const mex_snapshot_t *s) {
 
 static void derived(gw_jw_t *w, const mex_snapshot_t *s) {
     gw_jw_key(w, "derived");
-    if (!s->seq) {
+    if (!s->seq || !s->measurement_valid) {
         gw_jw_null(w);
         return;
     }
@@ -92,7 +92,7 @@ esp_err_t h_devices(web_ctx_t *c) {
         free(m);
         return web_send_error(c, 503, WEB_E_UNAVAILABLE, NULL, NULL);
     }
-    char buf[768];
+    char buf[1536];
     gw_jw_t w;
     gw_jw_init_fixed(&w, buf, sizeof(buf));
     gw_jw_arr_open(&w);
@@ -105,6 +105,8 @@ esp_err_t h_devices(web_ctx_t *c) {
         gw_jw_obj_open(&w);
         gw_jw_kuint(&w, "id", d->id);
         gw_jw_kstr(&w, "name", d->name);
+        gw_jw_kstr(&w, "template_id", d->template_id[0] ? d->template_id : GW_DEFAULT_TEMPLATE_ID);
+        gw_jw_kuint(&w, "display_mask", d->display_mask);
         gw_jw_kuint(&w, "slave", d->slave);
         gw_jw_kbool(&w, "enabled", d->enabled);
         gw_jw_kbool(&w, "online", d->enabled && s.online);
@@ -141,6 +143,7 @@ esp_err_t h_device_live(web_ctx_t *c) {
     const uint32_t poll_ms = cfg_get_section(CFG_SEC_MODBUS, &mb, sizeof(mb)) == ESP_OK ? mb.port.poll_ms : 0;
     gw_jw_kbool(&w, "fresh", alm_sample_fresh(&s, gw_time_mono_ms(), poll_ms));
     gw_jw_kbool(&w, "slow_valid", s.slow_valid);
+    gw_jw_kbool(&w, "measurement_valid", s.measurement_valid);
     live_regs(&w, &s);
     gw_jw_kuint(&w, "coils", s.coils);
     derived(&w, &s);
@@ -559,5 +562,16 @@ esp_err_t h_device_stats_reset(web_ctx_t *c) {
     mex_stats_t s;
     mex_service_stats(dev, &s, true);
     evlog_audit(AUD_STATS_RESET, dev, 0, 0, web_user(c), 0);
+    return web_send_status(c, 204);
+}
+
+esp_err_t h_device_history_delete(web_ctx_t *c) {
+    uint8_t dev;
+    if (!web_dev_param(c, &dev))
+        return ESP_OK;
+    esp_err_t err = history_clear(dev);
+    if (err != ESP_OK)
+        return web_send_esp_err(c, err);
+    evlog_audit(AUD_HISTORY_DELETE, dev, 0, 0, web_user(c), 0);
     return web_send_status(c, 204);
 }

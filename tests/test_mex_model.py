@@ -13,7 +13,7 @@ FRESH_MS = 3000
 
 class Snapshot(C.Structure):
     _fields_ = [('regs', C.c_uint16 * 60), ('coils', C.c_uint32), ('wall_ms', C.c_int64), ('mono_ms', C.c_uint64),
-                ('seq', C.c_uint32), ('online', C.c_bool), ('slow_valid', C.c_bool)]
+                ('seq', C.c_uint32), ('online', C.c_bool), ('slow_valid', C.c_bool), ('measurement_valid', C.c_bool)]
 
 
 class Command(C.Structure):

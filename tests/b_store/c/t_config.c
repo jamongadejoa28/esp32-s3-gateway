@@ -40,6 +40,7 @@ static void test_defaults(void) {
     CHECK_EQ(g_def.modbus.devices[0].slave, 1);
     CHECK(g_def.modbus.devices[0].enabled);
     CHECK_STR(g_def.modbus.devices[0].name, "MEX150");
+    CHECK_STR(g_def.modbus.devices[0].template_id, "mex150");
     CHECK_EQ(g_def.modbus.port.baud, 9600);
     CHECK_EQ(g_def.modbus.port.parity, 'N');
     CHECK_EQ(g_def.modbus.port.stop, 1);
@@ -660,6 +661,8 @@ static void test_json_file_parse(void) {
     /* modbus device merge in file mode: missing fields from per-id defaults */
     CHECK_EQ(from_json("{\"modbus\":{\"devices\":[{\"id\":0},{\"id\":2,\"name\":\"B\"}]}}", &g_n, &e), CFG_JSON_OK);
     CHECK_EQ(g_n.modbus.n_devices, 2);
+    CHECK_STR(g_n.modbus.devices[0].template_id, "mex150");
+    CHECK_STR(g_n.modbus.devices[1].template_id, "mex150");
     CHECK_STR(g_n.modbus.devices[0].name, "MEX150");
     CHECK_EQ(g_n.modbus.devices[1].slave, 3);
     CHECK(g_n.modbus.devices[1].enabled);
@@ -731,6 +734,14 @@ static void test_rest_put(void) {
     CHECK_STR(e.code, "overlap");
 
     /* modbus: devices matched by id; array replaces */
+    /* Reject unsupported templates even when a client bypasses the template picker. */
+    cfg_modbus_t rejected_template;
+    CHECK_EQ(put(CFG_SEC_MODBUS, "{\"devices\":[{\"id\":0,\"template_id\":\"other\"}]}",
+                 &rejected_template, NULL, &e), CFG_JSON_E_INVALID);
+    CHECK_STR(e.field, "modbus.devices[0].template_id");
+    CHECK_EQ(put(CFG_SEC_MODBUS, "{\"devices\":[{\"id\":0,\"template_id\":\"\"}]}",
+                 &rejected_template, NULL, &e), CFG_JSON_E_INVALID);
+    CHECK_STR(e.field, "modbus.devices[0].template_id");
     cfg_modbus_t mb;
     CHECK_EQ(put(CFG_SEC_MODBUS,
                  "{\"poll_ms\":2000,\"devices\":[{\"id\":0,\"name\":\"MEX150 #1\"},{\"id\":1,\"slave\":2}]}", &mb, NULL,
@@ -742,6 +753,9 @@ static void test_rest_put(void) {
     CHECK_EQ(mb.devices[0].slave, 1);
     CHECK(mb.devices[1].enabled);
     CHECK_EQ(mb.devices[1].slave, 2);
+    CHECK_STR(mb.devices[0].template_id, "mex150");
+    CHECK_EQ(mb.devices[0].display_mask, GW_CHANNEL_DISPLAY_DEFAULT);
+    CHECK_STR(mb.devices[1].template_id, "mex150");
     CHECK(cfg_validate_with(&g_c, CFG_SEC_MODBUS, &mb, &e));
     CHECK_EQ(put(CFG_SEC_MODBUS, "{\"devices\":[{\"slave\":2}]}", &mb, NULL, &e), CFG_JSON_E_INVALID);
     CHECK_STR(e.field, "modbus.devices[0].id");

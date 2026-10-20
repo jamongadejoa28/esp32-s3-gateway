@@ -121,6 +121,10 @@
           "type": "null"
         }
       ]
+    },
+    "measurement_valid": {
+      "type": "boolean",
+      "description": "False while the initial/reconnection 0/0 measurement pair is still unconfirmed; transport may already be online."
     }
   },
   "additionalProperties": false,

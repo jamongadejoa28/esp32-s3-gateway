@@ -38,6 +38,9 @@ esp_err_t evlog_files_append(evlog_files_t *f, const evlog_rec_t *recs, size_t n
 /** Delete both files and reset the counters (last_seq kept). */
 esp_err_t evlog_files_clear(evlog_files_t *f);
 
+/** Atomically rewrite each ring file with matching alarm history records removed. */
+esp_err_t evlog_files_delete_alarms(evlog_files_t *files, const evlog_delete_t *filter, uint32_t *deleted);
+
 /** True iff r matches filter f (NULL = any). */
 bool evlog_filter_match(const evlog_filter_t *f, const evlog_rec_t *r);
 
